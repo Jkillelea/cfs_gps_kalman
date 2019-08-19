@@ -606,6 +606,14 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
         switch (MsgId) 
         {
             case GPS_KALMAN_WAKEUP_MID:
+
+            case GPS_READER_GPS_INFO_MSG:
+            case GPS_READER_GPS_GPGGA_MSG:
+            case GPS_READER_GPS_GPGSA_MSG:
+            case GPS_READER_GPS_GPGSV_MSG:
+            case GPS_READER_GPS_GPRMC_MSG:
+            case GPS_READER_GPS_GPVTG_MSG:
+
                 GPS_KALMAN_ProcessNewCmds();
                 GPS_KALMAN_ProcessNewData();
 
