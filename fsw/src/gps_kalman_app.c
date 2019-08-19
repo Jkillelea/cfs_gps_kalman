@@ -1122,6 +1122,10 @@ void GPS_KALMAN_SendOutData()
 {
     /* TODO:  Add code to update output data, if needed, here.  */
 
+    OS_printf("OutData.filterLat = %lf\n", g_GPS_KALMAN_AppData.OutData.filterLat);
+    OS_printf("OutData.filterLon = %lf\n", g_GPS_KALMAN_AppData.OutData.filterLon);
+    OS_printf("OutData.filterVel = %lf\n", g_GPS_KALMAN_AppData.OutData.filterVel);
+
     CFE_SB_TimeStampMsg((CFE_SB_Msg_t*) &g_GPS_KALMAN_AppData.OutData);
     CFE_SB_SendMsg((CFE_SB_Msg_t*) &g_GPS_KALMAN_AppData.OutData);
 }
