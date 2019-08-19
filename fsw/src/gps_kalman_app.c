@@ -688,6 +688,7 @@ void GPS_KALMAN_ProcessNewData()
                     GpsInfoMsg_t *infoMsg = (GpsInfoMsg_t *) TlmMsgPtr;
                     g_GPS_KALMAN_AppData.InData.gpsLat = infoMsg->gpsInfo.lat;
                     g_GPS_KALMAN_AppData.InData.gpsLon = infoMsg->gpsInfo.lon;
+                    /* Speed and Heading not updated by this message */
                     GPS_KALMAN_RunFilter();
                     break;
 
@@ -696,16 +697,18 @@ void GPS_KALMAN_ProcessNewData()
                     GpsGpggaMsg_t *gpggaMsg = (GpsGpggaMsg_t *) TlmMsgPtr;
                     g_GPS_KALMAN_AppData.InData.gpsLat = gpggaMsg->gpsGpgga.lat;
                     g_GPS_KALMAN_AppData.InData.gpsLon = gpggaMsg->gpsGpgga.lon;
+                    /* Speed and Heading not updated by this message */
                     GPS_KALMAN_RunFilter();
                     break;
                     
                 case GPS_READER_GPS_GPGSA_MSG:
                     CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSA messgage");
-                    // no position information
+                    /* no position information */
                     break;
 
                 case GPS_READER_GPS_GPGSV_MSG:
                     CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSV messgage");
+                    /* no position information */
                     break;
 
                 case GPS_READER_GPS_GPRMC_MSG:
@@ -720,6 +723,7 @@ void GPS_KALMAN_ProcessNewData()
 
                 case GPS_READER_GPS_GPVTG_MSG:
                     CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPVTG messgage");
+                    /* no position information */
                     break;
 
                 default:
@@ -955,7 +959,6 @@ int32 GPS_KALMAN_RunFilter(void) {
     double measured_vel = g_GPS_KALMAN_AppData.InData.gpsVel;
 
     // TODO: calculate delta t, initalize all matrices
-
 
     // Predict the next state
     // DGEMV: y = alpha*op(A)*x + Beta*y
