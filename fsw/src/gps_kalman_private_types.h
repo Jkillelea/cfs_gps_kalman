@@ -61,6 +61,9 @@ typedef struct
 {
     uint8   ucTlmHeader[CFE_SB_TLM_HDR_SIZE];
     uint32  uiCounter;
+    double filterLat; // Kalman Filter Lattidue
+    double filterLon; // Kalman Filter Longitude
+    double filterVel; // Kalman Filter Velocity
 } GPS_KALMAN_OutData_t;
 
 /* TODO:  Add more private structure definitions here, if necessary. */
