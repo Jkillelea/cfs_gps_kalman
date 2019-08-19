@@ -25,7 +25,7 @@
 */
 #define GPS_KALMAN_SCH_PIPE_DEPTH  2
 #define GPS_KALMAN_CMD_PIPE_DEPTH  10
-#define GPS_KALMAN_TLM_PIPE_DEPTH  10
+#define GPS_KALMAN_TLM_PIPE_DEPTH  20
 
 
 /* TODO:  Add more platform configuration parameter definitions here, if necessary. */
