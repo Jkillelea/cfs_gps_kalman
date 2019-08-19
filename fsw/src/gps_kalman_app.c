@@ -44,8 +44,9 @@
 #include "gps_reader_msgs.h"
 
 #include <gsl/gsl_blas.h>
-#include <gsl/gsl_vector.h>
+#include <gsl/gsl_linalg.h>
 #include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
 
 /*
 ** Local Defines
@@ -63,7 +64,8 @@ GPS_KALMAN_AppData_t  g_GPS_KALMAN_AppData;
 gsl_vector *x_hat       = NULL; // kalman state vector
 gsl_vector *x_hat_next  = NULL; // kalman state vector
 gsl_matrix *F_mat       = NULL; // kalman system matrix
-gsl_matrix *Tmp_mat     = NULL; // kalman system matrix (transpose)
+gsl_matrix *Tmp_mat     = NULL; // Temporary matrix
+gsl_matrix *Tmp_mat2    = NULL; // Temporary matrix
 gsl_matrix *P_mat       = NULL; // kalman state covariance matrix (identity for now)
 gsl_matrix *Q_mat       = NULL; // kalman state covariance uncertainty matrix (zero for now)
 gsl_matrix *H_mat       = NULL; // kalman measurement matrix (identity for now)
@@ -75,6 +77,8 @@ gsl_vector *mu_actual    = NULL; // actual measurement
 gsl_matrix *Sigma_actual = NULL; // actual covariance
 
 gsl_matrix *K_mat = NULL; // kalman gain
+
+gsl_permutation *permut = NULL; // used for inverting matrices
 
 /*=====================================================================================
 ** Name: GPS_KALMAN_InitEvent
@@ -343,15 +347,23 @@ int32 GPS_KALMAN_InitData()
     int32  iStatus = CFE_SUCCESS;
 
     /* Init input data */
-    memset((void*) &g_GPS_KALMAN_AppData.InData, 0x00, sizeof(g_GPS_KALMAN_AppData.InData));
+    memset((void*) &g_GPS_KALMAN_AppData.InData, 0x00, 
+            sizeof(g_GPS_KALMAN_AppData.InData));
 
     /* Init output data */
-    memset((void*) &g_GPS_KALMAN_AppData.OutData, 0x00, sizeof(g_GPS_KALMAN_AppData.OutData));
-    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.OutData, GPS_KALMAN_OUT_DATA_MID, sizeof(g_GPS_KALMAN_AppData.OutData), TRUE);
+    memset((void*) &g_GPS_KALMAN_AppData.OutData, 0x00, 
+            sizeof(g_GPS_KALMAN_AppData.OutData));
+    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.OutData, 
+            GPS_KALMAN_OUT_DATA_MID, 
+            sizeof(g_GPS_KALMAN_AppData.OutData), 
+            TRUE);
 
     /* Init housekeeping packet */
-    memset((void*)&g_GPS_KALMAN_AppData.HkTlm, 0x00, sizeof(g_GPS_KALMAN_AppData.HkTlm));
-    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.HkTlm, GPS_KALMAN_HK_TLM_MID, sizeof(g_GPS_KALMAN_AppData.HkTlm), TRUE);
+    memset((void*)&g_GPS_KALMAN_AppData.HkTlm, 0x00, 
+            sizeof(g_GPS_KALMAN_AppData.HkTlm));
+    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.HkTlm, 
+            GPS_KALMAN_HK_TLM_MID, 
+            sizeof(g_GPS_KALMAN_AppData.HkTlm), TRUE);
 
     // initalize all the kalman filter elements
     x_hat         =  gsl_vector_calloc(GPS_KALMAN_FILTER_LEN);
@@ -360,15 +372,18 @@ int32 GPS_KALMAN_InitData()
     mu_actual     =  gsl_vector_calloc(GPS_KALMAN_FILTER_LEN);
     F_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
     Tmp_mat       =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
+    Tmp_mat2      =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
     P_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
     Q_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
     H_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
     Sigma_expect  =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
     Sigma_actual  =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
     K_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
+    permut        =  gsl_permutation_calloc(GPS_KALMAN_FILTER_LEN);
 
     gsl_matrix_set_identity(F_mat);
     gsl_matrix_set_zero(Tmp_mat);
+    gsl_matrix_set_zero(Tmp_mat2);
     gsl_matrix_set_identity(P_mat);
     gsl_matrix_set_zero(Q_mat);
     gsl_matrix_set_identity(H_mat);
@@ -478,6 +493,7 @@ GPS_KALMAN_InitApp_Exit_Tag:
 ** Routines Called:
 **    - gsl_vector_free
 **    - gsl_matrix_free
+**    - gsl_permutation_free
 **
 ** Called By:
 **    - Called by the OS
@@ -514,12 +530,14 @@ void GPS_KALMAN_CleanupCallback()
     gsl_vector_free(mu_actual);
     gsl_matrix_free(F_mat);
     gsl_matrix_free(Tmp_mat);
+    gsl_matrix_free(Tmp_mat2);
     gsl_matrix_free(P_mat);
     gsl_matrix_free(Q_mat);
     gsl_matrix_free(H_mat);
     gsl_matrix_free(Sigma_expect);
     gsl_matrix_free(Sigma_actual);
     gsl_matrix_free(K_mat);
+    gsl_permutation_free(permut);
 }
 
 /*=====================================================================================
@@ -665,6 +683,7 @@ void GPS_KALMAN_ProcessNewData()
     int iStatus = CFE_SUCCESS;
     CFE_SB_Msg_t*   TlmMsgPtr=NULL;
     CFE_SB_MsgId_t  TlmMsgId;
+    boolean newFilterDataRecieved = FALSE;
 
     /* Process telemetry messages till the pipe is empty */
     while (1)
@@ -675,21 +694,13 @@ void GPS_KALMAN_ProcessNewData()
             TlmMsgId = CFE_SB_GetMsgId(TlmMsgPtr);
             switch (TlmMsgId)
             {
-                /* TODO:  Add code to process all subscribed data here 
-                **
-                ** Example:
-                **     case NAV_OUT_DATA_MID:
-                **         GPS_KALMAN_ProcessNavData(TlmMsgPtr);
-                **         break;
-                */
-
                 case GPS_READER_GPS_INFO_MSG:
                     CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_INFO messgage");
                     GpsInfoMsg_t *infoMsg = (GpsInfoMsg_t *) TlmMsgPtr;
                     g_GPS_KALMAN_AppData.InData.gpsLat = infoMsg->gpsInfo.lat;
                     g_GPS_KALMAN_AppData.InData.gpsLon = infoMsg->gpsInfo.lon;
+                    newFilterDataRecieved = TRUE;
                     /* Speed and Heading not updated by this message */
-                    GPS_KALMAN_RunFilter();
                     break;
 
                 case GPS_READER_GPS_GPGGA_MSG:
@@ -697,8 +708,8 @@ void GPS_KALMAN_ProcessNewData()
                     GpsGpggaMsg_t *gpggaMsg = (GpsGpggaMsg_t *) TlmMsgPtr;
                     g_GPS_KALMAN_AppData.InData.gpsLat = gpggaMsg->gpsGpgga.lat;
                     g_GPS_KALMAN_AppData.InData.gpsLon = gpggaMsg->gpsGpgga.lon;
+                    newFilterDataRecieved = TRUE;
                     /* Speed and Heading not updated by this message */
-                    GPS_KALMAN_RunFilter();
                     break;
                     
                 case GPS_READER_GPS_GPGSA_MSG:
@@ -718,7 +729,7 @@ void GPS_KALMAN_ProcessNewData()
                     g_GPS_KALMAN_AppData.InData.gpsLon = gprmcMsg->gpsGprmc.lon;
                     g_GPS_KALMAN_AppData.InData.gpsVel = gprmcMsg->gpsGprmc.speed;
                     g_GPS_KALMAN_AppData.InData.gpsHdg = gprmcMsg->gpsGprmc.declination;
-                    GPS_KALMAN_RunFilter();
+                    newFilterDataRecieved = TRUE;
                     break;
 
                 case GPS_READER_GPS_GPVTG_MSG:
@@ -743,6 +754,10 @@ void GPS_KALMAN_ProcessNewData()
             g_GPS_KALMAN_AppData.uiRunStatus = CFE_ES_APP_ERROR;
             break;
         }
+    }
+
+    if (newFilterDataRecieved == TRUE) {
+        GPS_KALMAN_RunFilter();
     }
 }
 
@@ -945,9 +960,9 @@ void GPS_KALMAN_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
 **       Do not omit the section.
 **
 ** Algorithm:
-**    Psuedo-code or description of basic algorithm
+**    Runs a kalman filter on latitude, longitude, and velocity
 **
-** Author(s):  GSFC, Jacob Killelea
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-07-11
 **           Unit Tested   yyyy-mm-dd
@@ -959,6 +974,11 @@ int32 GPS_KALMAN_RunFilter(void) {
     double measured_vel = g_GPS_KALMAN_AppData.InData.gpsVel;
 
     // TODO: calculate delta t, initalize all matrices
+
+    // Initialize state vector with last filter results
+    gsl_vector_set(x_hat, 0, g_GPS_KALMAN_AppData.OutData.filterLat);
+    gsl_vector_set(x_hat, 1, g_GPS_KALMAN_AppData.OutData.filterLon);
+    gsl_vector_set(x_hat, 2, g_GPS_KALMAN_AppData.OutData.filterVel);
 
     // Predict the next state
     // DGEMV: y = alpha*op(A)*x + Beta*y
@@ -987,10 +1007,29 @@ int32 GPS_KALMAN_RunFilter(void) {
     gsl_vector_set(mu_actual, 0, measured_lat);
     gsl_vector_set(mu_actual, 1, measured_lon);
     gsl_vector_set(mu_actual, 2, measured_vel);
+
     gsl_matrix_memcpy(Sigma_actual, P_mat);
 
 
     // K = Sigma_expect * (Sigma_expect + Sigma_actual)^-1
+    // (1) K = Sigma_expect * (1:(Sigma_expect + Sigma_actual))^-1
+    gsl_matrix_memcpy(Tmp_mat,   Sigma_expect); // tmp <-  sigma0
+    gsl_matrix_add(Sigma_expect, Sigma_actual); // sigma0 <- sigma0 + sigma1
+    gsl_matrix_swap(Tmp_mat,     Sigma_expect); // sigma0 <-> tmp
+
+    //  Tmp_mat = $1 = Sigma_expect + Sigma_actual
+    // (2) K = Sigma_expect * 2:($1^-1)
+    int signum;
+    gsl_linalg_LU_decomp(Tmp_mat, permut, &signum);
+    gsl_linalg_LU_invert(Tmp_mat, permut, Tmp_mat2);
+
+    // Tmp_mat2 = $2
+    // (3) K = 3:(Sigma_expect * $2)
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, Sigma_expect, Tmp_mat2, 0.0, K_mat);
+
+    g_GPS_KALMAN_AppData.OutData.filterLat = gsl_vector_get(x_hat_next, 0);
+    g_GPS_KALMAN_AppData.OutData.filterLon = gsl_vector_get(x_hat_next, 1);
+    g_GPS_KALMAN_AppData.OutData.filterVel = gsl_vector_get(x_hat_next, 2);
 
     return status;
 }
