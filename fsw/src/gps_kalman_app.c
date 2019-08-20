@@ -1029,6 +1029,23 @@ int32 GPS_KALMAN_RunFilter(void) {
     // (3) K = 3:(Sigma_expect * $2)
     gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, Sigma_expect, Tmp_mat2, 0.0, K_mat);
 
+	// state_next = state_next + K * (mu1 - mu0)
+	// (1) state_next = state_next + K * 1:(mu1 - mu0)
+	gsl_vector_sub(mu_actual, mu_expect);
+	// mu1 = $1
+	// (2) state_next = 2:(K * 1:(mu1 - mu0) + state_next)
+	gsl_blas_dgemv(CblasNoTrans, 1.0, K_mat, mu_actual, 1.0, x_hat_next);
+
+	// P = K * H * P - P
+	// (1) P = K * 1:(H * P) - P
+	gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, H_mat, P_mat, 0.0, Tmp_mat);
+	// Tmp_mat = $1
+	// (2) P = 2:(K * 1:(H * P) - P)
+	gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, -1.0, K_mat, Tmp_mat, 1.0, P_mat);
+
+    // state <- state_next
+    gsl_vector_memcpy(x_hat, x_hat_next);
+
     g_GPS_KALMAN_AppData.OutData.filterLat = gsl_vector_get(x_hat_next, 0);
     g_GPS_KALMAN_AppData.OutData.filterLon = gsl_vector_get(x_hat_next, 1);
     g_GPS_KALMAN_AppData.OutData.filterVel = gsl_vector_get(x_hat_next, 2);
