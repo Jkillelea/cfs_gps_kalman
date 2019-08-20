@@ -34,6 +34,7 @@
 #include "gps_kalman_perfids.h"
 #include "gps_kalman_msgids.h"
 #include "gps_kalman_msg.h"
+#include "gps_kalman_utils.h"
 
 /*
 ** Local Defines

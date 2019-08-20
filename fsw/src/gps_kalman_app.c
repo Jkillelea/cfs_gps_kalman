@@ -7,7 +7,7 @@
 ** $Revision: 1.1 $
 ** $Date:      2019-06-28
 **
-** Purpose:  This source file contains all necessary function definitions to run GPS_KALMAN
+** Purpose:  This source file contains necessary function definitions to run GPS_KALMAN
 **           application.
 **
 ** Functions Defined:
@@ -605,22 +605,24 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
         MsgId = CFE_SB_GetMsgId(MsgPtr);
         switch (MsgId) 
         {
-            case GPS_KALMAN_WAKEUP_MID:
-                CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_INFORMATION,
-                    "GPS_KALMAN - Wakeup Message (0x%08X)", MsgId);
-                GPS_KALMAN_ProcessNewCmds();
-                GPS_KALMAN_ProcessNewData();
+        case GPS_KALMAN_WAKEUP_MID:
+            CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID,
+                CFE_EVS_INFORMATION,
+                "Wakeup Message (0x%08X)", MsgId);
+            GPS_KALMAN_ProcessNewCmds();
+            GPS_KALMAN_ProcessNewData();
 
-                /* TODO:  Add more code here to handle other things when app wakes up */
+            /* TODO:  Add more code here to handle other things when app wakes up */
 
-                /* The last thing to do at the end of this Wakeup cycle should be to
-                   automatically publish new output. */
-                GPS_KALMAN_SendOutData();
-                break;
+            /* The last thing to do at the end of this Wakeup cycle should be to
+               automatically publish new output. */
+            GPS_KALMAN_SendOutData();
+            break;
 
-            default:
-                CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_ERROR,
-                                  "GPS_KALMAN - Recvd invalid SCH msgId (0x%08X)", MsgId);
+        default:
+            CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, 
+                    CFE_EVS_ERROR,
+                    "GPS_KALMAN - Recvd invalid SCH msgId (0x%08X)", MsgId);
         }
     }
     else if (iStatus == CFE_SB_NO_MESSAGE)
@@ -634,7 +636,8 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
         */
         CFE_EVS_SendEvent(GPS_KALMAN_PIPE_ERR_EID, CFE_EVS_ERROR,
 			  "GPS_KALMAN: SB pipe read error (0x%08X), app will exit", iStatus);
-        g_GPS_KALMAN_AppData.uiRunStatus= CFE_ES_APP_ERROR;
+
+        g_GPS_KALMAN_AppData.uiRunStatus = CFE_ES_APP_ERROR;
     }
 
     return (iStatus);
@@ -696,53 +699,53 @@ void GPS_KALMAN_ProcessNewData()
             TlmMsgId = CFE_SB_GetMsgId(TlmMsgPtr);
             switch (TlmMsgId)
             {
-                case GPS_READER_GPS_INFO_MSG:
-                    CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_INFO messgage");
-                    GpsInfoMsg_t *infoMsg = (GpsInfoMsg_t *) TlmMsgPtr;
-                    g_GPS_KALMAN_AppData.InData.gpsLat = infoMsg->gpsInfo.lat;
-                    g_GPS_KALMAN_AppData.InData.gpsLon = infoMsg->gpsInfo.lon;
-                    newFilterDataRecieved = TRUE;
-                    /* Speed and Heading not updated by this message */
-                    break;
+            case GPS_READER_GPS_INFO_MSG:
+                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_INFO messgage");
+                GpsInfoMsg_t *infoMsg = (GpsInfoMsg_t *) TlmMsgPtr;
+                g_GPS_KALMAN_AppData.InData.gpsLat = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lat);
+                g_GPS_KALMAN_AppData.InData.gpsLon = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lon);
+                newFilterDataRecieved = TRUE;
+                /* Speed and Heading not updated by this message */
+                break;
 
-                case GPS_READER_GPS_GPGGA_MSG:
-                    CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGGA messgage");
-                    GpsGpggaMsg_t *gpggaMsg = (GpsGpggaMsg_t *) TlmMsgPtr;
-                    g_GPS_KALMAN_AppData.InData.gpsLat = gpggaMsg->gpsGpgga.lat;
-                    g_GPS_KALMAN_AppData.InData.gpsLon = gpggaMsg->gpsGpgga.lon;
-                    newFilterDataRecieved = TRUE;
-                    /* Speed and Heading not updated by this message */
-                    break;
-                    
-                case GPS_READER_GPS_GPGSA_MSG:
-                    CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSA messgage");
-                    /* no position information */
-                    break;
+            case GPS_READER_GPS_GPGGA_MSG:
+                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGGA messgage");
+                GpsGpggaMsg_t *gpggaMsg = (GpsGpggaMsg_t *) TlmMsgPtr;
+                g_GPS_KALMAN_AppData.InData.gpsLat = decimal_minutes2decimal_decimal(gpggaMsg->gpsGpgga.lat);
+                g_GPS_KALMAN_AppData.InData.gpsLon = decimal_minutes2decimal_decimal(gpggaMsg->gpsGpgga.lon);
+                newFilterDataRecieved = TRUE;
+                /* Speed and Heading not updated by this message */
+                break;
+                
+            case GPS_READER_GPS_GPGSA_MSG:
+                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSA messgage");
+                /* no position information */
+                break;
 
-                case GPS_READER_GPS_GPGSV_MSG:
-                    CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSV messgage");
-                    /* no position information */
-                    break;
+            case GPS_READER_GPS_GPGSV_MSG:
+                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSV messgage");
+                /* no position information */
+                break;
 
-                case GPS_READER_GPS_GPRMC_MSG:
-                    CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPRMC messgage");
-                    GpsGprmcMsg_t *gprmcMsg = (GpsGprmcMsg_t *) TlmMsgPtr;
-                    g_GPS_KALMAN_AppData.InData.gpsLat = gprmcMsg->gpsGprmc.lat;
-                    g_GPS_KALMAN_AppData.InData.gpsLon = gprmcMsg->gpsGprmc.lon;
-                    g_GPS_KALMAN_AppData.InData.gpsVel = gprmcMsg->gpsGprmc.speed;
-                    g_GPS_KALMAN_AppData.InData.gpsHdg = gprmcMsg->gpsGprmc.declination;
-                    newFilterDataRecieved = TRUE;
-                    break;
+            case GPS_READER_GPS_GPRMC_MSG:
+                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPRMC messgage");
+                GpsGprmcMsg_t *gprmcMsg = (GpsGprmcMsg_t *) TlmMsgPtr;
+                g_GPS_KALMAN_AppData.InData.gpsLat = decimal_minutes2decimal_decimal(gprmcMsg->gpsGprmc.lat);
+                g_GPS_KALMAN_AppData.InData.gpsLon = decimal_minutes2decimal_decimal(gprmcMsg->gpsGprmc.lon);
+                g_GPS_KALMAN_AppData.InData.gpsVel = gprmcMsg->gpsGprmc.speed;
+                g_GPS_KALMAN_AppData.InData.gpsHdg = gprmcMsg->gpsGprmc.declination;
+                newFilterDataRecieved = TRUE;
+                break;
 
-                case GPS_READER_GPS_GPVTG_MSG:
-                    CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPVTG messgage");
-                    /* no position information */
-                    break;
+            case GPS_READER_GPS_GPVTG_MSG:
+                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPVTG messgage");
+                /* no position information */
+                break;
 
-                default:
-                    CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_ERROR,
-                                      "GPS_KALMAN - Recvd invalid TLM msgId (0x%08X)", TlmMsgId);
-                    break;
+            default:
+                CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_ERROR,
+                                  "GPS_KALMAN - Recvd invalid TLM msgId (0x%08X)", TlmMsgId);
+                break;
             }
         }
         else if (iStatus == CFE_SB_NO_MESSAGE)
@@ -820,28 +823,27 @@ void GPS_KALMAN_ProcessNewCmds()
             CmdMsgId = CFE_SB_GetMsgId(CmdMsgPtr);
             switch (CmdMsgId)
             {
-                case GPS_KALMAN_CMD_MID:
-                    GPS_KALMAN_ProcessNewAppCmds(CmdMsgPtr);
-                    break;
+            case GPS_KALMAN_CMD_MID:
+                GPS_KALMAN_ProcessNewAppCmds(CmdMsgPtr);
+                break;
 
-                case GPS_KALMAN_SEND_HK_MID:
-                    GPS_KALMAN_ReportHousekeeping();
-                    break;
-
-
-                /* TODO:  Add code to process other subscribed commands here
-                **
-                ** Example:
-                **     case CFE_TIME_DATA_CMD_MID:
-                **         GPS_KALMAN_ProcessTimeDataCmd(CmdMsgPtr);
-                **         break;
-                */
+            case GPS_KALMAN_SEND_HK_MID:
+                GPS_KALMAN_ReportHousekeeping();
+                break;
 
 
-                default:
-                    CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_ERROR,
-                                      "GPS_KALMAN - Recvd invalid CMD msgId (0x%08X)", CmdMsgId);
-                    break;
+            /* TODO:  Add code to process other subscribed commands here
+            **
+            ** Example:
+            **     case CFE_TIME_DATA_CMD_MID:
+            **         GPS_KALMAN_ProcessTimeDataCmd(CmdMsgPtr);
+            **         break;
+            */
+
+            default:
+                CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_ERROR,
+                                  "GPS_KALMAN - Recvd invalid CMD msgId (0x%08X)", CmdMsgId);
+                break;
             }
         }
         else if (iStatus == CFE_SB_NO_MESSAGE)
@@ -907,26 +909,26 @@ void GPS_KALMAN_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
         uiCmdCode = CFE_SB_GetCmdCode(MsgPtr);
         switch (uiCmdCode)
         {
-            case GPS_KALMAN_NOOP_CC:
-                g_GPS_KALMAN_AppData.HkTlm.usCmdCnt++;
-                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION,
-                                  "GPS_KALMAN - Recvd NOOP cmd (%d)", uiCmdCode);
-                break;
+        case GPS_KALMAN_NOOP_CC:
+            g_GPS_KALMAN_AppData.HkTlm.usCmdCnt++;
+            CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION,
+                              "GPS_KALMAN - Recvd NOOP cmd (%d)", uiCmdCode);
+            break;
 
-            case GPS_KALMAN_RESET_CC:
-                g_GPS_KALMAN_AppData.HkTlm.usCmdCnt = 0;
-                g_GPS_KALMAN_AppData.HkTlm.usCmdErrCnt = 0;
-                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION,
-                                  "GPS_KALMAN - Recvd RESET cmd (%d)", uiCmdCode);
-                break;
+        case GPS_KALMAN_RESET_CC:
+            g_GPS_KALMAN_AppData.HkTlm.usCmdCnt = 0;
+            g_GPS_KALMAN_AppData.HkTlm.usCmdErrCnt = 0;
+            CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION,
+                              "GPS_KALMAN - Recvd RESET cmd (%d)", uiCmdCode);
+            break;
 
-            /* TODO:  Add code to process the rest of the GPS_KALMAN commands here */
+        /* TODO:  Add code to process the rest of the GPS_KALMAN commands here */
 
-            default:
-                g_GPS_KALMAN_AppData.HkTlm.usCmdErrCnt++;
-                CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_ERROR,
-                                  "GPS_KALMAN - Recvd invalid cmdId (%d)", uiCmdCode);
-                break;
+        default:
+            g_GPS_KALMAN_AppData.HkTlm.usCmdErrCnt++;
+            CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_ERROR,
+                              "GPS_KALMAN - Recvd invalid cmdId (%d)", uiCmdCode);
+            break;
         }
     }
 }
@@ -943,7 +945,7 @@ void GPS_KALMAN_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
 **    None
 **
 ** Routines Called:
-**    TBD
+**    - GSL vector and matrix math
 **
 ** Called By:
 **    GPS_KALMAN_ProcessNewData
@@ -971,6 +973,7 @@ void GPS_KALMAN_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
 **=====================================================================================*/
 int32 GPS_KALMAN_RunFilter(void) {
     int32 status = CFE_SUCCESS;
+    int signum;
     double measured_lat = g_GPS_KALMAN_AppData.InData.gpsLat;
     double measured_lon = g_GPS_KALMAN_AppData.InData.gpsLon;
     double measured_vel = g_GPS_KALMAN_AppData.InData.gpsVel;
@@ -1012,7 +1015,6 @@ int32 GPS_KALMAN_RunFilter(void) {
 
     gsl_matrix_memcpy(Sigma_actual, P_mat);
 
-
     // K = Sigma_expect * (Sigma_expect + Sigma_actual)^-1
     // (1) K = Sigma_expect * (1:(Sigma_expect + Sigma_actual))^-1
     gsl_matrix_memcpy(Tmp_mat,   Sigma_expect); // tmp <-  sigma0
@@ -1021,7 +1023,6 @@ int32 GPS_KALMAN_RunFilter(void) {
 
     //  Tmp_mat = $1 = Sigma_expect + Sigma_actual
     // (2) K = Sigma_expect * 2:($1^-1)
-    int signum;
     gsl_linalg_LU_decomp(Tmp_mat, permut, &signum);
     gsl_linalg_LU_invert(Tmp_mat, permut, Tmp_mat2);
 
