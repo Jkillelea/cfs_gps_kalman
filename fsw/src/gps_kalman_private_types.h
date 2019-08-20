@@ -50,11 +50,11 @@ typedef struct
     /* TODO:  Add input data to this application here, such as raw data read from I/O
     **        devices or data subscribed from other apps' output data.
     */
-    double gpsLat; // GPS Lattidue
-    double gpsLon; // GPS Longitude
-    double gpsVel; // GPS Velocity
-    double gpsHdg; // GPS Heading
-
+    double gpsLat;  // GPS Lattidue
+    double gpsLon;  // GPS Longitude
+    double gpsVel;  // GPS Velocity
+    double gpsHdg;  // GPS Heading
+    double gpsPDOP; // GPS Position Dilution of Position
 } GPS_KALMAN_InData_t;
 
 typedef struct

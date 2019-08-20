@@ -385,10 +385,11 @@ int32 GPS_KALMAN_InitData()
     gsl_matrix_set_zero(Tmp_mat);
     gsl_matrix_set_zero(Tmp_mat2);
     gsl_matrix_set_identity(P_mat);
+    gsl_matrix_scale(P_mat, 999.0);
     gsl_matrix_set_zero(Q_mat);
     gsl_matrix_set_identity(H_mat);
-    gsl_matrix_set_zero(Sigma_expect);
-    gsl_matrix_set_zero(Sigma_actual);
+    gsl_matrix_set_identity(Sigma_expect);
+    gsl_matrix_set_identity(Sigma_actual);
     gsl_matrix_set_zero(K_mat);
 
     return (iStatus);
@@ -606,9 +607,9 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
         switch (MsgId) 
         {
         case GPS_KALMAN_WAKEUP_MID:
-            CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID,
-                CFE_EVS_INFORMATION,
-                "Wakeup Message (0x%08X)", MsgId);
+            // CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID,
+            //     CFE_EVS_INFORMATION,
+            //     "Wakeup Message (0x%08X)", MsgId);
             GPS_KALMAN_ProcessNewCmds();
             GPS_KALMAN_ProcessNewData();
 
@@ -686,7 +687,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
 void GPS_KALMAN_ProcessNewData()
 {
     int iStatus = CFE_SUCCESS;
-    CFE_SB_Msg_t*   TlmMsgPtr=NULL;
+    CFE_SB_Msg_t*   TlmMsgPtr = NULL;
     CFE_SB_MsgId_t  TlmMsgId;
     boolean newFilterDataRecieved = FALSE;
 
@@ -700,45 +701,67 @@ void GPS_KALMAN_ProcessNewData()
             switch (TlmMsgId)
             {
             case GPS_READER_GPS_INFO_MSG:
-                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_INFO messgage");
-                GpsInfoMsg_t *infoMsg = (GpsInfoMsg_t *) TlmMsgPtr;
-                g_GPS_KALMAN_AppData.InData.gpsLat = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lat);
-                g_GPS_KALMAN_AppData.InData.gpsLon = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lon);
+                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_INFO messgage"); */
                 newFilterDataRecieved = TRUE;
+                GpsInfoMsg_t *infoMsg = (GpsInfoMsg_t *) TlmMsgPtr;
+                g_GPS_KALMAN_AppData.InData.gpsLat  = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lat);
+                g_GPS_KALMAN_AppData.InData.gpsLon  = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lon);
+                g_GPS_KALMAN_AppData.InData.gpsVel  = infoMsg->gpsInfo.speed;
+                g_GPS_KALMAN_AppData.InData.gpsHdg  = infoMsg->gpsInfo.direction;
+                g_GPS_KALMAN_AppData.InData.gpsPDOP = infoMsg->gpsInfo.PDOP;
                 /* Speed and Heading not updated by this message */
                 break;
 
             case GPS_READER_GPS_GPGGA_MSG:
-                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGGA messgage");
+                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGGA messgage"); */
+                newFilterDataRecieved = TRUE;
                 GpsGpggaMsg_t *gpggaMsg = (GpsGpggaMsg_t *) TlmMsgPtr;
                 g_GPS_KALMAN_AppData.InData.gpsLat = decimal_minutes2decimal_decimal(gpggaMsg->gpsGpgga.lat);
                 g_GPS_KALMAN_AppData.InData.gpsLon = decimal_minutes2decimal_decimal(gpggaMsg->gpsGpgga.lon);
-                newFilterDataRecieved = TRUE;
+
+                if (gpggaMsg->gpsGpgga.ns == 'S') {
+                    g_GPS_KALMAN_AppData.InData.gpsLat *= -1;
+                }
+                if (gpggaMsg->gpsGpgga.ew == 'W') {
+                    g_GPS_KALMAN_AppData.InData.gpsLon *= -1;
+                }
+
                 /* Speed and Heading not updated by this message */
                 break;
                 
             case GPS_READER_GPS_GPGSA_MSG:
-                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSA messgage");
+                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSA messgage"); */
+                newFilterDataRecieved = FALSE; // need statement, but don't want to act on just this data alone
+                GpsGpgsaMsg_t *gpgsaMsg = (GpsGpgsaMsg_t *) TlmMsgPtr;
+                g_GPS_KALMAN_AppData.InData.gpsPDOP = gpgsaMsg->gpsGpgsa.PDOP;
                 /* no position information */
                 break;
 
             case GPS_READER_GPS_GPGSV_MSG:
-                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSV messgage");
+                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSV messgage"); */
                 /* no position information */
                 break;
 
             case GPS_READER_GPS_GPRMC_MSG:
-                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPRMC messgage");
+                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPRMC messgage"); */
+                newFilterDataRecieved = TRUE;
                 GpsGprmcMsg_t *gprmcMsg = (GpsGprmcMsg_t *) TlmMsgPtr;
                 g_GPS_KALMAN_AppData.InData.gpsLat = decimal_minutes2decimal_decimal(gprmcMsg->gpsGprmc.lat);
                 g_GPS_KALMAN_AppData.InData.gpsLon = decimal_minutes2decimal_decimal(gprmcMsg->gpsGprmc.lon);
+
+                if (gprmcMsg->gpsGprmc.ns == 'S') {
+                    g_GPS_KALMAN_AppData.InData.gpsLat *= -1;
+                }
+                if (gprmcMsg->gpsGprmc.ew == 'W') {
+                    g_GPS_KALMAN_AppData.InData.gpsLon *= -1;
+                }
+
                 g_GPS_KALMAN_AppData.InData.gpsVel = gprmcMsg->gpsGprmc.speed;
-                g_GPS_KALMAN_AppData.InData.gpsHdg = gprmcMsg->gpsGprmc.declination;
-                newFilterDataRecieved = TRUE;
+                g_GPS_KALMAN_AppData.InData.gpsHdg = gprmcMsg->gpsGprmc.direction;
                 break;
 
             case GPS_READER_GPS_GPVTG_MSG:
-                CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPVTG messgage");
+                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPVTG messgage"); */
                 /* no position information */
                 break;
 
@@ -760,6 +783,12 @@ void GPS_KALMAN_ProcessNewData()
             break;
         }
     }
+
+    OS_printf("Input Lat %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsLat);
+    OS_printf("Input Lon %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsLon);
+    OS_printf("Input Spd %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsVel);
+    OS_printf("Input Hdg %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsHdg);
+    OS_printf("Input PDP %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsPDOP);
 
     if (newFilterDataRecieved == TRUE) {
         GPS_KALMAN_RunFilter();
@@ -974,9 +1003,10 @@ void GPS_KALMAN_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
 int32 GPS_KALMAN_RunFilter(void) {
     int32 status = CFE_SUCCESS;
     int signum;
-    double measured_lat = g_GPS_KALMAN_AppData.InData.gpsLat;
-    double measured_lon = g_GPS_KALMAN_AppData.InData.gpsLon;
-    double measured_vel = g_GPS_KALMAN_AppData.InData.gpsVel;
+    double measured_lat  = g_GPS_KALMAN_AppData.InData.gpsLat;
+    double measured_lon  = g_GPS_KALMAN_AppData.InData.gpsLon;
+    double measured_vel  = g_GPS_KALMAN_AppData.InData.gpsVel;
+    double measured_pdop = g_GPS_KALMAN_AppData.InData.gpsPDOP;
 
     // TODO: calculate delta t, initalize all matrices
 
@@ -1013,7 +1043,9 @@ int32 GPS_KALMAN_RunFilter(void) {
     gsl_vector_set(mu_actual, 1, measured_lon);
     gsl_vector_set(mu_actual, 2, measured_vel);
 
-    gsl_matrix_memcpy(Sigma_actual, P_mat);
+    // gsl_matrix_memcpy(Sigma_actual, P_mat);
+    gsl_matrix_set_identity(Sigma_actual);
+    gsl_matrix_scale(Sigma_actual, measured_pdop * measured_pdop);
 
     // K = Sigma_expect * (Sigma_expect + Sigma_actual)^-1
     // (1) K = Sigma_expect * (1:(Sigma_expect + Sigma_actual))^-1
@@ -1142,9 +1174,11 @@ void GPS_KALMAN_SendOutData()
 {
     /* TODO:  Add code to update output data, if needed, here.  */
 
-    OS_printf("OutData.filterLat = %lf\n", g_GPS_KALMAN_AppData.OutData.filterLat);
-    OS_printf("OutData.filterLon = %lf\n", g_GPS_KALMAN_AppData.OutData.filterLon);
-    OS_printf("OutData.filterVel = %lf\n", g_GPS_KALMAN_AppData.OutData.filterVel);
+    CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION,
+        "%10.7f %10.7f %10.7f", 
+        g_GPS_KALMAN_AppData.OutData.filterLat,
+        g_GPS_KALMAN_AppData.OutData.filterLon,
+        g_GPS_KALMAN_AppData.OutData.filterVel);
 
     CFE_SB_TimeStampMsg((CFE_SB_Msg_t*) &g_GPS_KALMAN_AppData.OutData);
     CFE_SB_SendMsg((CFE_SB_Msg_t*) &g_GPS_KALMAN_AppData.OutData);
