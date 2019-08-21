@@ -1043,7 +1043,6 @@ int32 GPS_KALMAN_RunFilter(void) {
     gsl_vector_set(mu_actual, 1, measured_lon);
     gsl_vector_set(mu_actual, 2, measured_vel);
 
-    // gsl_matrix_memcpy(Sigma_actual, P_mat);
     gsl_matrix_set_identity(Sigma_actual);
     gsl_matrix_scale(Sigma_actual, measured_pdop * measured_pdop);
 
@@ -1175,10 +1174,15 @@ void GPS_KALMAN_SendOutData()
     /* TODO:  Add code to update output data, if needed, here.  */
 
     CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION,
-        "%10.7f %10.7f %10.7f", 
+        "%10.7f %10.7f %10.7f +/- %10.7f %10.7f %10.7f",
         g_GPS_KALMAN_AppData.OutData.filterLat,
         g_GPS_KALMAN_AppData.OutData.filterLon,
-        g_GPS_KALMAN_AppData.OutData.filterVel);
+        g_GPS_KALMAN_AppData.OutData.filterVel,
+        gsl_matrix_get(P_mat, 0, 0),
+        gsl_matrix_get(P_mat, 1, 1),
+        gsl_matrix_get(P_mat, 2, 2));
+
+
 
     CFE_SB_TimeStampMsg((CFE_SB_Msg_t*) &g_GPS_KALMAN_AppData.OutData);
     CFE_SB_SendMsg((CFE_SB_Msg_t*) &g_GPS_KALMAN_AppData.OutData);
