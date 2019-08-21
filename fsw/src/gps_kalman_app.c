@@ -285,11 +285,11 @@ int32 GPS_KALMAN_InitPipe()
 
         /* GPS Reader messages */
         CFE_SB_Subscribe(GPS_READER_GPS_INFO_MSG,  g_GPS_KALMAN_AppData.TlmPipeId);
-        CFE_SB_Subscribe(GPS_READER_GPS_GPGGA_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
-        CFE_SB_Subscribe(GPS_READER_GPS_GPGSA_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
-        CFE_SB_Subscribe(GPS_READER_GPS_GPGSV_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
-        CFE_SB_Subscribe(GPS_READER_GPS_GPRMC_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
-        CFE_SB_Subscribe(GPS_READER_GPS_GPVTG_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
+        // CFE_SB_Subscribe(GPS_READER_GPS_GPGGA_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
+        // CFE_SB_Subscribe(GPS_READER_GPS_GPGSA_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
+        // CFE_SB_Subscribe(GPS_READER_GPS_GPGSV_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
+        // CFE_SB_Subscribe(GPS_READER_GPS_GPRMC_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
+        // CFE_SB_Subscribe(GPS_READER_GPS_GPVTG_MSG, g_GPS_KALMAN_AppData.TlmPipeId);
 
     }
     else
