@@ -34,6 +34,7 @@
 ** Include Files
 */
 #include <string.h>
+#include <math.h>
 
 #include "cfe.h"
 
@@ -386,7 +387,8 @@ int32 GPS_KALMAN_InitData()
     gsl_matrix_set_zero(Tmp_mat2);
     gsl_matrix_set_identity(P_mat);
     gsl_matrix_scale(P_mat, 999.0);
-    gsl_matrix_set_zero(Q_mat);
+    gsl_matrix_set_identity(Q_mat);
+    gsl_matrix_scale(Q_mat, 0.1);
     gsl_matrix_set_identity(H_mat);
     gsl_matrix_set_identity(Sigma_expect);
     gsl_matrix_set_identity(Sigma_actual);
@@ -1001,7 +1003,7 @@ int32 GPS_KALMAN_RunFilter(void) {
     gsl_vector_set(mu_actual, 2, measured_vel);
 
     gsl_matrix_set_identity(Sigma_actual);
-    gsl_matrix_scale(Sigma_actual, measured_pdop * measured_pdop);
+    gsl_matrix_scale(Sigma_actual, abs(measured_pdop));
 
     // K = Sigma_expect * (Sigma_expect + Sigma_actual)^-1
     // (1) K = Sigma_expect * (1:(Sigma_expect + Sigma_actual))^-1
