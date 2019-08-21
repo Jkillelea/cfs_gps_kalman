@@ -690,6 +690,7 @@ void GPS_KALMAN_ProcessNewData()
     CFE_SB_Msg_t*   TlmMsgPtr = NULL;
     CFE_SB_MsgId_t  TlmMsgId;
     boolean newFilterDataRecieved = FALSE;
+    boolean pdopOk = FALSE;
 
     /* Process telemetry messages till the pipe is empty */
     while (1)
@@ -704,65 +705,15 @@ void GPS_KALMAN_ProcessNewData()
                 /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_INFO messgage"); */
                 newFilterDataRecieved = TRUE;
                 GpsInfoMsg_t *infoMsg = (GpsInfoMsg_t *) TlmMsgPtr;
+                
+                /* Lat and Lon are +/- in decimal format */
                 g_GPS_KALMAN_AppData.InData.gpsLat  = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lat);
                 g_GPS_KALMAN_AppData.InData.gpsLon  = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lon);
+                /* kph */
                 g_GPS_KALMAN_AppData.InData.gpsVel  = infoMsg->gpsInfo.speed;
+                /* degrees true */
                 g_GPS_KALMAN_AppData.InData.gpsHdg  = infoMsg->gpsInfo.direction;
                 g_GPS_KALMAN_AppData.InData.gpsPDOP = infoMsg->gpsInfo.PDOP;
-                /* Speed and Heading not updated by this message */
-                break;
-
-            case GPS_READER_GPS_GPGGA_MSG:
-                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGGA messgage"); */
-                newFilterDataRecieved = TRUE;
-                GpsGpggaMsg_t *gpggaMsg = (GpsGpggaMsg_t *) TlmMsgPtr;
-                g_GPS_KALMAN_AppData.InData.gpsLat = decimal_minutes2decimal_decimal(gpggaMsg->gpsGpgga.lat);
-                g_GPS_KALMAN_AppData.InData.gpsLon = decimal_minutes2decimal_decimal(gpggaMsg->gpsGpgga.lon);
-
-                if (gpggaMsg->gpsGpgga.ns == 'S') {
-                    g_GPS_KALMAN_AppData.InData.gpsLat *= -1;
-                }
-                if (gpggaMsg->gpsGpgga.ew == 'W') {
-                    g_GPS_KALMAN_AppData.InData.gpsLon *= -1;
-                }
-
-                /* Speed and Heading not updated by this message */
-                break;
-                
-            case GPS_READER_GPS_GPGSA_MSG:
-                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSA messgage"); */
-                newFilterDataRecieved = FALSE; // need statement, but don't want to act on just this data alone
-                GpsGpgsaMsg_t *gpgsaMsg = (GpsGpgsaMsg_t *) TlmMsgPtr;
-                g_GPS_KALMAN_AppData.InData.gpsPDOP = gpgsaMsg->gpsGpgsa.PDOP;
-                /* no position information */
-                break;
-
-            case GPS_READER_GPS_GPGSV_MSG:
-                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPGSV messgage"); */
-                /* no position information */
-                break;
-
-            case GPS_READER_GPS_GPRMC_MSG:
-                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPRMC messgage"); */
-                newFilterDataRecieved = TRUE;
-                GpsGprmcMsg_t *gprmcMsg = (GpsGprmcMsg_t *) TlmMsgPtr;
-                g_GPS_KALMAN_AppData.InData.gpsLat = decimal_minutes2decimal_decimal(gprmcMsg->gpsGprmc.lat);
-                g_GPS_KALMAN_AppData.InData.gpsLon = decimal_minutes2decimal_decimal(gprmcMsg->gpsGprmc.lon);
-
-                if (gprmcMsg->gpsGprmc.ns == 'S') {
-                    g_GPS_KALMAN_AppData.InData.gpsLat *= -1;
-                }
-                if (gprmcMsg->gpsGprmc.ew == 'W') {
-                    g_GPS_KALMAN_AppData.InData.gpsLon *= -1;
-                }
-
-                g_GPS_KALMAN_AppData.InData.gpsVel = gprmcMsg->gpsGprmc.speed;
-                g_GPS_KALMAN_AppData.InData.gpsHdg = gprmcMsg->gpsGprmc.direction;
-                break;
-
-            case GPS_READER_GPS_GPVTG_MSG:
-                /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_GPVTG messgage"); */
-                /* no position information */
                 break;
 
             default:
@@ -784,14 +735,20 @@ void GPS_KALMAN_ProcessNewData()
         }
     }
 
-    OS_printf("Input Lat %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsLat);
-    OS_printf("Input Lon %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsLon);
-    OS_printf("Input Spd %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsVel);
-    OS_printf("Input Hdg %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsHdg);
-    OS_printf("Input PDP %10.7f\n", g_GPS_KALMAN_AppData.InData.gpsPDOP);
+    pdopOk = g_GPS_KALMAN_AppData.InData.gpsPDOP < 99.0;
 
-    if (newFilterDataRecieved == TRUE) {
-        GPS_KALMAN_RunFilter();
+    if (newFilterDataRecieved)
+    {
+        // OS_printf("Input Lat  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsLat);
+        // OS_printf("Input Lon  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsLon);
+        // OS_printf("Input Spd  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsVel);
+        // OS_printf("Input Hdg  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsHdg);
+        // OS_printf("Input PDOP %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsPDOP);
+
+        if (pdopOk)
+        {
+            GPS_KALMAN_RunFilter();
+        }
     }
 }
 
