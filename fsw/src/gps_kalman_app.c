@@ -692,7 +692,7 @@ void GPS_KALMAN_ProcessNewData()
     CFE_SB_Msg_t*   TlmMsgPtr = NULL;
     CFE_SB_MsgId_t  TlmMsgId;
     boolean newFilterDataRecieved = FALSE;
-    boolean pdopOk = FALSE;
+    boolean gpsFixOk = FALSE;
 
     /* Process telemetry messages till the pipe is empty */
     while (1)
@@ -715,7 +715,10 @@ void GPS_KALMAN_ProcessNewData()
                 g_GPS_KALMAN_AppData.InData.gpsVel  = infoMsg->gpsInfo.speed;
                 /* degrees true */
                 g_GPS_KALMAN_AppData.InData.gpsHdg  = infoMsg->gpsInfo.direction;
-                g_GPS_KALMAN_AppData.InData.gpsPDOP = infoMsg->gpsInfo.PDOP;
+                g_GPS_KALMAN_AppData.InData.gpsDOP = infoMsg->gpsInfo.HDOP;
+
+                gpsFixOk = infoMsg->gpsInfo.fix > 1;
+
                 break;
 
             default:
@@ -737,7 +740,7 @@ void GPS_KALMAN_ProcessNewData()
         }
     }
 
-    pdopOk = g_GPS_KALMAN_AppData.InData.gpsPDOP < 99.0;
+    // gpsFixOk = g_GPS_KALMAN_AppData.InData.gpsDOP < 99.0;
 
     if (newFilterDataRecieved)
     {
@@ -745,9 +748,9 @@ void GPS_KALMAN_ProcessNewData()
         // OS_printf("Input Lon  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsLon);
         // OS_printf("Input Spd  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsVel);
         // OS_printf("Input Hdg  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsHdg);
-        // OS_printf("Input PDOP %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsPDOP);
+        // OS_printf("Input PDOP %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsDOP);
 
-        if (pdopOk)
+        if (gpsFixOk)
         {
             GPS_KALMAN_RunFilter();
         }
@@ -965,7 +968,7 @@ int32 GPS_KALMAN_RunFilter(void) {
     double measured_lat  = g_GPS_KALMAN_AppData.InData.gpsLat;
     double measured_lon  = g_GPS_KALMAN_AppData.InData.gpsLon;
     double measured_vel  = g_GPS_KALMAN_AppData.InData.gpsVel;
-    double measured_pdop = g_GPS_KALMAN_AppData.InData.gpsPDOP;
+    double measured_dop = g_GPS_KALMAN_AppData.InData.gpsDOP;
 
     // TODO: calculate delta t, initalize all matrices
 
@@ -1003,7 +1006,7 @@ int32 GPS_KALMAN_RunFilter(void) {
     gsl_vector_set(mu_actual, 2, measured_vel);
 
     gsl_matrix_set_identity(Sigma_actual);
-    gsl_matrix_scale(Sigma_actual, abs(measured_pdop));
+    gsl_matrix_scale(Sigma_actual, abs(measured_dop));
 
     // K = Sigma_expect * (Sigma_expect + Sigma_actual)^-1
     // (1) K = Sigma_expect * (1:(Sigma_expect + Sigma_actual))^-1
