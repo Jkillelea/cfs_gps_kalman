@@ -54,7 +54,7 @@ typedef struct
     double gpsLon;  // GPS Longitude
     double gpsVel;  // GPS Velocity
     double gpsHdg;  // GPS Heading
-    double gpsPDOP; // GPS Position Dilution of Position
+    double gpsDOP; // GPS Position Dilution of Position
 } GPS_KALMAN_InData_t;
 
 typedef struct
