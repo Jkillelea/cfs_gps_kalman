@@ -50,20 +50,21 @@ typedef struct
     /* TODO:  Add input data to this application here, such as raw data read from I/O
     **        devices or data subscribed from other apps' output data.
     */
-    double gpsLat;  // GPS Lattidue
-    double gpsLon;  // GPS Longitude
-    double gpsVel;  // GPS Velocity
-    double gpsHdg;  // GPS Heading
-    double gpsDOP; // GPS Position Dilution of Position
+    boolean gpsFixOk; /* is the data any good? */
+    double  gpsLat;   /* GPS Lattidue */
+    double  gpsLon;   /* GPS Longitude */
+    double  gpsVel;   /* GPS Velocity */
+    double  gpsHdg;   /* GPS Heading */
+    double  gpsDOP;   /* GPS Position Dilution of Position */
 } GPS_KALMAN_InData_t;
 
 typedef struct
 {
     uint8   ucTlmHeader[CFE_SB_TLM_HDR_SIZE];
     uint32  uiCounter;
-    double filterLat; // Kalman Filter Lattidue
-    double filterLon; // Kalman Filter Longitude
-    double filterVel; // Kalman Filter Velocity
+    double filterLat; /* Kalman Filter Lattidue */
+    double filterLon; /* Kalman Filter Longitude */
+    double filterVel; /* Kalman Filter Velocity */
 } GPS_KALMAN_OutData_t;
 
 /* TODO:  Add more private structure definitions here, if necessary. */
