@@ -115,7 +115,7 @@ gsl_permutation *permut = NULL; /* used for inverting matrices */
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -197,7 +197,7 @@ int32 GPS_KALMAN_InitEvent()
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -224,7 +224,7 @@ int32 GPS_KALMAN_InitPipe()
             CFE_ES_WriteToSysLog("GPS_KALMAN - Sch Pipe failed to subscribe to GPS_KALMAN_WAKEUP_MID. (0x%08X)\n", iStatus);
             goto GPS_KALMAN_InitPipe_Exit_Tag;
         }
-        
+
     }
     else
     {
@@ -259,7 +259,7 @@ int32 GPS_KALMAN_InitPipe()
             CFE_ES_WriteToSysLog("GPS_KALMAN - CMD Pipe failed to subscribe to GPS_KALMAN_SEND_HK_MID. (0x%08X)\n", iStatus);
             goto GPS_KALMAN_InitPipe_Exit_Tag;
         }
-        
+
     }
     else
     {
@@ -338,7 +338,7 @@ GPS_KALMAN_InitPipe_Exit_Tag:
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -348,22 +348,22 @@ int32 GPS_KALMAN_InitData()
     int32  iStatus = CFE_SUCCESS;
 
     /* Init input data */
-    memset((void*) &g_GPS_KALMAN_AppData.InData, 0x00, 
+    memset((void*) &g_GPS_KALMAN_AppData.InData, 0x00,
             sizeof(g_GPS_KALMAN_AppData.InData));
 
     /* Init output data */
-    memset((void*) &g_GPS_KALMAN_AppData.OutData, 0x00, 
+    memset((void*) &g_GPS_KALMAN_AppData.OutData, 0x00,
             sizeof(g_GPS_KALMAN_AppData.OutData));
-    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.OutData, 
-            GPS_KALMAN_OUT_DATA_MID, 
-            sizeof(g_GPS_KALMAN_AppData.OutData), 
+    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.OutData,
+            GPS_KALMAN_OUT_DATA_MID,
+            sizeof(g_GPS_KALMAN_AppData.OutData),
             TRUE);
 
     /* Init housekeeping packet */
-    memset((void*)&g_GPS_KALMAN_AppData.HkTlm, 0x00, 
+    memset((void*)&g_GPS_KALMAN_AppData.HkTlm, 0x00,
             sizeof(g_GPS_KALMAN_AppData.HkTlm));
-    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.HkTlm, 
-            GPS_KALMAN_HK_TLM_MID, 
+    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.HkTlm,
+            GPS_KALMAN_HK_TLM_MID,
             sizeof(g_GPS_KALMAN_AppData.HkTlm), TRUE);
 
     /* initalize all the kalman filter elements */
@@ -439,7 +439,7 @@ int32 GPS_KALMAN_InitData()
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -457,8 +457,8 @@ int32 GPS_KALMAN_InitApp()
         goto GPS_KALMAN_InitApp_Exit_Tag;
     }
 
-    if ((GPS_KALMAN_InitEvent() != CFE_SUCCESS) || 
-        (GPS_KALMAN_InitPipe() != CFE_SUCCESS) || 
+    if ((GPS_KALMAN_InitEvent() != CFE_SUCCESS) ||
+        (GPS_KALMAN_InitPipe() != CFE_SUCCESS) ||
         (GPS_KALMAN_InitData() != CFE_SUCCESS))
     {
         iStatus = -1;
@@ -518,7 +518,7 @@ GPS_KALMAN_InitApp_Exit_Tag:
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -552,7 +552,7 @@ void GPS_KALMAN_CleanupCallback()
 **    None
 **
 ** Returns:
-**    int32 iStatus - Status of initialization 
+**    int32 iStatus - Status of initialization
 **
 ** Routines Called:
 **    CFE_SB_RcvMsg
@@ -583,7 +583,7 @@ void GPS_KALMAN_CleanupCallback()
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -606,7 +606,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
     if (iStatus == CFE_SUCCESS)
     {
         MsgId = CFE_SB_GetMsgId(MsgPtr);
-        switch (MsgId) 
+        switch (MsgId)
         {
         case GPS_KALMAN_WAKEUP_MID:
             GPS_KALMAN_ProcessNewCmds();
@@ -621,7 +621,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
             break;
 
         default:
-            CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, 
+            CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID,
                     CFE_EVS_ERROR,
                     "GPS_KALMAN - Recvd invalid SCH msgId (0x%08X)", MsgId);
         }
@@ -636,7 +636,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
         ** Note that a SB read error is not always going to result in an app quitting.
         */
         CFE_EVS_SendEvent(GPS_KALMAN_PIPE_ERR_EID, CFE_EVS_ERROR,
-			  "GPS_KALMAN: SB pipe read error (0x%08X), app will exit", iStatus);
+            "GPS_KALMAN: SB pipe read error (0x%08X), app will exit", iStatus);
 
         g_GPS_KALMAN_AppData.uiRunStatus = CFE_ES_APP_ERROR;
     }
@@ -679,7 +679,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -704,7 +704,7 @@ void GPS_KALMAN_ProcessNewData()
                 /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_INFO messgage"); */
                 newFilterDataRecieved = TRUE;
                 GpsInfoMsg_t *infoMsg = (GpsInfoMsg_t *) TlmMsgPtr;
-                
+
                 /* Lat and Lon are +/- in decimal format */
                 g_GPS_KALMAN_AppData.InData.gpsLat  = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lat);
                 g_GPS_KALMAN_AppData.InData.gpsLon  = decimal_minutes2decimal_decimal(infoMsg->gpsInfo.lon);
@@ -786,7 +786,7 @@ void GPS_KALMAN_ProcessNewData()
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -878,7 +878,7 @@ void GPS_KALMAN_ProcessNewCmds()
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -1182,7 +1182,7 @@ void GPS_KALMAN_SendOutData()
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -1250,7 +1250,7 @@ boolean GPS_KALMAN_VerifyCmdLength(CFE_SB_Msg_t* MsgPtr,
 ** Algorithm:
 **    Psuedo-code or description of basic algorithm
 **
-** Author(s):  Jacob Killelea 
+** Author(s):  Jacob Killelea
 **
 ** History:  Date Written  2019-06-28
 **           Unit Tested   yyyy-mm-dd
@@ -1283,9 +1283,9 @@ void GPS_KALMAN_AppMain()
 
     /* Exit the application */
     CFE_ES_ExitApp(g_GPS_KALMAN_AppData.uiRunStatus);
-} 
-    
+}
+
 /*=======================================================================================
 ** End of file gps_kalman_app.c
 **=====================================================================================*/
-    
+
