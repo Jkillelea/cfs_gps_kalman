@@ -711,11 +711,12 @@ void GPS_KALMAN_ProcessNewData()
                 /* kph */
                 g_GPS_KALMAN_AppData.InData.gpsVel  = infoMsg->gpsInfo.speed;
                 /* degrees true */
-                g_GPS_KALMAN_AppData.InData.gpsHdg  = infoMsg->gpsInfo.direction;
-                g_GPS_KALMAN_AppData.InData.gpsDOP = infoMsg->gpsInfo.HDOP;
+                g_GPS_KALMAN_AppData.InData.gpsHdg = infoMsg->gpsInfo.direction;
+                g_GPS_KALMAN_AppData.InData.gpsDOP = infoMsg->gpsInfo.HDOP; /* Horizontal Dilution Of Precision */
 
-                g_GPS_KALMAN_AppData.InData.gpsFixOk = (infoMsg->gpsInfo.fix > 1)
-                                                    && (g_GPS_KALMAN_AppData.InData.gpsDOP < 99.0);
+                g_GPS_KALMAN_AppData.InData.gpsFixOk = (infoMsg->gpsInfo.fix > 1)  /* GPS quality indicator (0 = Invalid; 1 = Fix; 2 = Differential, 3 = Sensitive) */
+                                                    && (infoMsg->gpsInfo.sig > 0)  /* Operating mode, used for navigation (1 = Fix not available; 2 = 2D; 3 = 3D) */
+                                                    && (g_GPS_KALMAN_AppData.InData.gpsDOP < 99.0); /* 99.99 is used for undetermined/null */
 
                 break;
 
