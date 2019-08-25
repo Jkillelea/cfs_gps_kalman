@@ -741,7 +741,11 @@ void GPS_KALMAN_ProcessNewData()
 
     if (newFilterDataRecieved)
     {
-        OS_printf("[GPS_KALMAN] Data %s\n", g_GPS_KALMAN_AppData.InData.gpsFixOk ? "ok" : "not good");
+        if (!g_GPS_KALMAN_AppData.InData.gpsFixOk)
+        {
+            CFE_EVS_SendEvent(GPS_KALMAN_ERR_EID, CFE_EVS_ERROR, "GPS data not good");
+        }
+
         OS_printf("[GPS_KALMAN] Input Lat  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsLat);
         OS_printf("[GPS_KALMAN] Input Lon  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsLon);
         OS_printf("[GPS_KALMAN] Input Spd  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsVel);
