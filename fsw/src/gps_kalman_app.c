@@ -386,7 +386,7 @@ int32 GPS_KALMAN_InitData()
     gsl_matrix_set_zero(Tmp_mat);
     gsl_matrix_set_zero(Tmp_mat2);
     gsl_matrix_set_identity(P_mat);
-    gsl_matrix_scale(P_mat, 999.0);
+    gsl_matrix_scale(P_mat, 999999.0);
     gsl_matrix_set_identity(Q_mat);
     gsl_matrix_scale(Q_mat, 0.1);
     gsl_matrix_set_identity(H_mat);
