@@ -13,6 +13,7 @@
 **   Date | Author | Description
 **   ---------------------------
 **   2019-06-28 | Jacob Killelea | Build #: Code Started
+**   2019-09-02 | Jacob Killelea | Build #: Move GPS_KALMAN_OutData_t to this file
 **
 **=====================================================================================*/
     
@@ -52,6 +53,15 @@ typedef struct
 
 } GPS_KALMAN_HkTlm_t;
 
+/* Filter output data */
+typedef struct
+{
+    uint8   ucTlmHeader[CFE_SB_TLM_HDR_SIZE];
+    uint32  uiCounter;
+    double filterLat; /* Kalman Filter Lattidue */
+    double filterLon; /* Kalman Filter Longitude */
+    double filterVel; /* Kalman Filter Velocity */
+} GPS_KALMAN_OutData_t;
 
 #endif /* _GPS_KALMAN_MSG_H_ */
 

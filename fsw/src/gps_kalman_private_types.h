@@ -58,14 +58,7 @@ typedef struct
     double  gpsDOP;   /* GPS Position Dilution of Position */
 } GPS_KALMAN_InData_t;
 
-typedef struct
-{
-    uint8   ucTlmHeader[CFE_SB_TLM_HDR_SIZE];
-    uint32  uiCounter;
-    double filterLat; /* Kalman Filter Lattidue */
-    double filterLon; /* Kalman Filter Longitude */
-    double filterVel; /* Kalman Filter Velocity */
-} GPS_KALMAN_OutData_t;
+/* NOTE:  Moved GPS_KALMAN_OutData_t to mission_inc/gps_kalman_msg.h. */
 
 /* TODO:  Add more private structure definitions here, if necessary. */
 

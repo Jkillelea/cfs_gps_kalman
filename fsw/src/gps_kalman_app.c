@@ -41,6 +41,7 @@
 #include "gps_kalman_platform_cfg.h"
 #include "gps_kalman_mission_cfg.h"
 #include "gps_kalman_app.h"
+#include "gps_kalman_msg.h"
 #include "gps_reader_msgids.h"
 #include "gps_reader_msgs.h"
 
