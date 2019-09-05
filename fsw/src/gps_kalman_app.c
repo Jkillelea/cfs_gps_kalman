@@ -715,9 +715,14 @@ void GPS_KALMAN_ProcessNewData()
                 g_GPS_KALMAN_AppData.InData.gpsHdg = infoMsg->gpsInfo.direction;
                 g_GPS_KALMAN_AppData.InData.gpsDOP = infoMsg->gpsInfo.HDOP; /* Horizontal Dilution Of Precision */
 
-                g_GPS_KALMAN_AppData.InData.gpsFixOk = (infoMsg->gpsInfo.fix >= 1)  /* GPS quality indicator (0 = Invalid; 1 = Fix; 2 = Differential, 3 = Sensitive) */
-                                                    && (infoMsg->gpsInfo.sig >= 2)  /* Operating mode, used for navigation (1 = Fix not available; 2 = 2D; 3 = 3D) */
-                                                    && (g_GPS_KALMAN_AppData.InData.gpsDOP < 99.0); /* 99.99 is used for undetermined/null */
+                /* Determine whether GPS fix is good based on reported signals and PDOP */
+                g_GPS_KALMAN_AppData.InData.gpsFixOk =
+                /* fix = Operating mode, used for navigation (1 = Fix not available; 2 = 2D; 3 = 3D) */
+                    (infoMsg->gpsInfo.fix >= 2)
+                /* sig = GPS quality indicator (0 = Invalid; 1 = Fix; 2 = Differential, 3 = Sensitive) */
+                && (infoMsg->gpsInfo.sig >= 1)
+                /* 99.99 is used for undetermined/null */
+                && (g_GPS_KALMAN_AppData.InData.gpsDOP < 99.99);
 
                 break;
 
@@ -746,12 +751,19 @@ void GPS_KALMAN_ProcessNewData()
         {
             CFE_EVS_SendEvent(GPS_KALMAN_ERR_EID, CFE_EVS_ERROR, "GPS data not good");
         }
-
-        OS_printf("[GPS_KALMAN] Input Lat  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsLat);
-        OS_printf("[GPS_KALMAN] Input Lon  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsLon);
-        OS_printf("[GPS_KALMAN] Input Spd  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsVel);
-        OS_printf("[GPS_KALMAN] Input Hdg  %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsHdg);
-        OS_printf("[GPS_KALMAN] Input PDOP %11.7f\n", g_GPS_KALMAN_AppData.InData.gpsDOP);
+        else
+        {
+            OS_printf("[GPS_KALMAN] Input Lat  %11.7f\n",
+                    g_GPS_KALMAN_AppData.InData.gpsLat);
+            OS_printf("[GPS_KALMAN] Input Lon  %11.7f\n",
+                    g_GPS_KALMAN_AppData.InData.gpsLon);
+            OS_printf("[GPS_KALMAN] Input Spd  %11.7f\n",
+                    g_GPS_KALMAN_AppData.InData.gpsVel);
+            OS_printf("[GPS_KALMAN] Input Hdg  %11.7f\n",
+                    g_GPS_KALMAN_AppData.InData.gpsHdg);
+            OS_printf("[GPS_KALMAN] Input PDOP %11.7f\n",
+                    g_GPS_KALMAN_AppData.InData.gpsDOP);
+        }
     }
 }
 
