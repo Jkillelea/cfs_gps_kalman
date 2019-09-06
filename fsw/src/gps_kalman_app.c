@@ -724,6 +724,9 @@ void GPS_KALMAN_ProcessNewData()
                 /* 99.99 is used for undetermined/null */
                 && (g_GPS_KALMAN_AppData.InData.gpsDOP < 99.99);
 
+
+                /* TODO: replace with actual filtering */
+                g_GPS_KALMAN_AppData.OutData.filterHdg = infoMsg->gpsInfo.direction;
                 break;
 
             default:

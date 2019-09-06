@@ -61,6 +61,7 @@ typedef struct
     double filterLat; /* Kalman Filter Lattidue */
     double filterLon; /* Kalman Filter Longitude */
     double filterVel; /* Kalman Filter Velocity */
+    double filterHdg; /* Kalman Filter Heading (true) TODO: actually filter? */
 } GPS_KALMAN_OutData_t;
 
 #endif /* _GPS_KALMAN_MSG_H_ */
