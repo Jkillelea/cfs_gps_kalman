@@ -41,6 +41,7 @@
 #include "gps_kalman_platform_cfg.h"
 #include "gps_kalman_mission_cfg.h"
 #include "gps_kalman_app.h"
+#include "gps_kalman_data.h"
 #include "gps_kalman_msg.h"
 #include "gps_reader_msgids.h"
 #include "gps_reader_msgs.h"
@@ -63,24 +64,6 @@ GPS_KALMAN_AppData_t  g_GPS_KALMAN_AppData;
 /*
 ** Local Variables
 */
-gsl_vector *x_hat       = NULL; /* kalman state vector */
-gsl_vector *x_hat_next  = NULL; /* kalman state vector */
-gsl_matrix *F_mat       = NULL; /* kalman system matrix */
-gsl_matrix *Tmp_mat     = NULL; /* Temporary matrix */
-gsl_matrix *Tmp_mat2    = NULL; /* Temporary matrix */
-gsl_matrix *P_mat       = NULL; /* kalman state covariance matrix */
-gsl_matrix *Q_mat       = NULL; /* kalman state covariance uncertainty matrix (0.1*identity for now) */
-gsl_matrix *H_mat       = NULL; /* kalman measurement matrix (identity for now) */
-
-gsl_vector *mu_expect    = NULL; /* expected measurement */
-gsl_matrix *Sigma_expect = NULL; /* expected covariance */
-
-gsl_vector *mu_actual    = NULL; /* actual measurement */
-gsl_matrix *Sigma_actual = NULL; /* actual covariance */
-
-gsl_matrix *K_mat = NULL; /* kalman gain */
-
-gsl_permutation *permut = NULL; /* used for inverting matrices */
 
 /*=====================================================================================
 ** Name: GPS_KALMAN_InitEvent
@@ -368,32 +351,18 @@ int32 GPS_KALMAN_InitData()
             sizeof(g_GPS_KALMAN_AppData.HkTlm), TRUE);
 
     /* initalize all the kalman filter elements */
-    x_hat         =  gsl_vector_calloc(GPS_KALMAN_FILTER_LEN);
-    x_hat_next    =  gsl_vector_calloc(GPS_KALMAN_FILTER_LEN);
-    mu_expect     =  gsl_vector_calloc(GPS_KALMAN_FILTER_LEN);
-    mu_actual     =  gsl_vector_calloc(GPS_KALMAN_FILTER_LEN);
-    F_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    Tmp_mat       =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    Tmp_mat2      =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    P_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    Q_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    H_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    Sigma_expect  =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    Sigma_actual  =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    K_mat         =  gsl_matrix_calloc(GPS_KALMAN_FILTER_LEN, GPS_KALMAN_FILTER_LEN);
-    permut        =  gsl_permutation_calloc(GPS_KALMAN_FILTER_LEN);
-
-    gsl_matrix_set_identity(F_mat);
-    gsl_matrix_set_zero(Tmp_mat);
-    gsl_matrix_set_zero(Tmp_mat2);
-    gsl_matrix_set_identity(P_mat);
-    gsl_matrix_scale(P_mat, 999999.0);
-    gsl_matrix_set_identity(Q_mat);
-    gsl_matrix_scale(Q_mat, 0.1);
-    gsl_matrix_set_identity(H_mat);
-    gsl_matrix_set_identity(Sigma_expect);
-    gsl_matrix_set_identity(Sigma_actual);
-    gsl_matrix_set_zero(K_mat);
+    GPS_KALMAN_Init_Matrix_Data();
+    gsl_matrix_set_identity(FMatrix);
+    gsl_matrix_set_zero(TmpMatrix);
+    gsl_matrix_set_zero(TmpMatrix2);
+    gsl_matrix_set_identity(PMatrix);
+    gsl_matrix_scale(PMatrix, 999999.0);
+    gsl_matrix_set_identity(QMatrix);
+    gsl_matrix_scale(QMatrix, 0.1);
+    gsl_matrix_set_identity(HMatrix);
+    gsl_matrix_set_identity(SigmaExpectMatrix);
+    gsl_matrix_set_identity(SigmaActualMatrix);
+    gsl_matrix_set_zero(KMatrix);
 
     return (iStatus);
 }
@@ -527,21 +496,6 @@ GPS_KALMAN_InitApp_Exit_Tag:
 void GPS_KALMAN_CleanupCallback()
 {
     /* TODO:  Add code to cleanup memory and other cleanup here */
-    /* initalize all the kalman filter elements */
-    gsl_vector_free(x_hat);
-    gsl_vector_free(x_hat_next);
-    gsl_vector_free(mu_expect);
-    gsl_vector_free(mu_actual);
-    gsl_matrix_free(F_mat);
-    gsl_matrix_free(Tmp_mat);
-    gsl_matrix_free(Tmp_mat2);
-    gsl_matrix_free(P_mat);
-    gsl_matrix_free(Q_mat);
-    gsl_matrix_free(H_mat);
-    gsl_matrix_free(Sigma_expect);
-    gsl_matrix_free(Sigma_actual);
-    gsl_matrix_free(K_mat);
-    gsl_permutation_free(permut);
 }
 
 /*=====================================================================================
@@ -986,82 +940,82 @@ int32 GPS_KALMAN_RunFilter(void) {
     /* TODO: calculate delta t, initalize all matrices */
 
     /* Initialize state vector with last filter results */
-    gsl_vector_set(x_hat, 0, g_GPS_KALMAN_AppData.OutData.filterLat);
-    gsl_vector_set(x_hat, 1, g_GPS_KALMAN_AppData.OutData.filterLon);
-    gsl_vector_set(x_hat, 2, g_GPS_KALMAN_AppData.OutData.filterVel);
+    gsl_vector_set(XHat, 0, g_GPS_KALMAN_AppData.OutData.filterLat);
+    gsl_vector_set(XHat, 1, g_GPS_KALMAN_AppData.OutData.filterLon);
+    gsl_vector_set(XHat, 2, g_GPS_KALMAN_AppData.OutData.filterVel);
 
     /* Predict the next state */
     /* DGEMV: y = alpha*op(A)*x + Beta*y */
     /* With CblasNoTrans, op(A) = A */
     /* x_k+1 = F_k * x_k */
-    gsl_blas_dgemv(CblasNoTrans, 1.0, F_mat, x_hat, 0.0, x_hat_next);
+    gsl_blas_dgemv(CblasNoTrans, 1.0, FMatrix, XHat, 0.0, XHatNext);
 
     /* Next covariance: P = F * P * F' + Q */
     /* DGEMM: C = alpha*opa(A)*opb(B) + beta*C */
     /* P = 1:(F * P) * F' + Q */
-    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0,   F_mat, P_mat, 0.0, Tmp_mat);
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0,   FMatrix, PMatrix, 0.0, TmpMatrix);
     /* P = 2:(1:(tmp) * F') + Q */
-    gsl_blas_dgemm(CblasNoTrans,   CblasTrans, 1.0, Tmp_mat, F_mat, 0.0,   P_mat);
+    gsl_blas_dgemm(CblasNoTrans,   CblasTrans, 1.0, TmpMatrix, FMatrix, 0.0,   PMatrix);
     /* P = 3:(2:(1:(tmp) * F') + Q) */
-    gsl_matrix_add(P_mat, Q_mat);
+    gsl_matrix_add(PMatrix, QMatrix);
 
     /* If GPS data is available, run the update section of the kalman algorithm */
     if (g_GPS_KALMAN_AppData.InData.gpsFixOk)
     {
-        /* mu_expect = H * x_hat_next */
-        gsl_blas_dgemv(CblasNoTrans, 1.0, H_mat, x_hat, 0.0, mu_expect);
-        /* Sigma_expect = H * P * H' */
-        /* Sigma_expect = 1:(H * P) * H' */
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, H_mat,   P_mat, 0.0,      Tmp_mat);
-        /* Sigma_expect = 2:(1:(tmp) * H') */
-        gsl_blas_dgemm(CblasNoTrans, CblasTrans,   1.0, Tmp_mat, H_mat, 0.0, Sigma_expect);
+        /* MuExpected = H * XHatNext */
+        gsl_blas_dgemv(CblasNoTrans, 1.0, HMatrix, XHatNext, 0.0, MuExpected);
+        /* SigmaExpectMatrix = H * P * H' */
+        /* SigmaExpectMatrix = 1:(H * P) * H' */
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, HMatrix, PMatrix, 0.0, TmpMatrix);
+        /* SigmaExpectMatrix = 2:(1:(tmp) * H') */
+        gsl_blas_dgemm(CblasNoTrans, CblasTrans,   1.0, TmpMatrix, HMatrix, 0.0, SigmaExpectMatrix);
 
-        /* mu_actual = Actual measurement */
-        gsl_vector_set(mu_actual, 0, measured_lat);
-        gsl_vector_set(mu_actual, 1, measured_lon);
-        gsl_vector_set(mu_actual, 2, measured_vel);
+        /* MuActual = Actual measurement */
+        gsl_vector_set(MuActual, 0, measured_lat);
+        gsl_vector_set(MuActual, 1, measured_lon);
+        gsl_vector_set(MuActual, 2, measured_vel);
 
-        /* Sigma_actual has DOP for lat and lon currently, 0.1 for speed */
-        gsl_matrix_set_identity(Sigma_actual);
-        gsl_matrix_scale(Sigma_actual, abs(measured_dop));
-        gsl_matrix_set(Sigma_actual, 2, 2, 0.1);
+        /* SigmaActualMatrix has DOP for lat and lon currently, 0.1 for speed */
+        gsl_matrix_set_identity(SigmaActualMatrix);
+        gsl_matrix_scale(SigmaActualMatrix, abs(measured_dop));
+        gsl_matrix_set(SigmaActualMatrix, 2, 2, 0.1);
 
-        /* K = Sigma_expect * (Sigma_expect + Sigma_actual)^-1 */
-        /* (1) K = Sigma_expect * (1:(Sigma_expect + Sigma_actual))^-1 */
-        gsl_matrix_memcpy(Tmp_mat,   Sigma_expect); /* tmp <-  sigma0 */
-        gsl_matrix_add(Sigma_expect, Sigma_actual); /* sigma0 <- sigma0 + sigma1 */
-        gsl_matrix_swap(Tmp_mat,     Sigma_expect); /* sigma0 <-> tmp */
+        /* K = SigmaExpectMatrix * (SigmaExpectMatrix + SigmaActualMatrix)^-1 */
+        /* (1) K = SigmaExpectMatrix * (1:(SigmaExpectMatrix + SigmaActualMatrix))^-1 */
+        gsl_matrix_memcpy(TmpMatrix,   SigmaExpectMatrix); /* tmp <-  sigma0 */
+        gsl_matrix_add(SigmaExpectMatrix, SigmaActualMatrix); /* sigma0 <- sigma0 + sigma1 */
+        gsl_matrix_swap(TmpMatrix,     SigmaExpectMatrix); /* sigma0 <-> tmp */
 
-        /*  Tmp_mat = $1 = Sigma_expect + Sigma_actual */
-        /* (2) K = Sigma_expect * 2:($1^-1) */
-        gsl_linalg_LU_decomp(Tmp_mat, permut, &signum);
-        gsl_linalg_LU_invert(Tmp_mat, permut, Tmp_mat2);
+        /*  TmpMatrix = $1 = SigmaExpectMatrix + SigmaActualMatrix */
+        /* (2) K = SigmaExpectMatrix * 2:($1^-1) */
+        gsl_linalg_LU_decomp(TmpMatrix, GSLPermutation, &signum);
+        gsl_linalg_LU_invert(TmpMatrix, GSLPermutation, TmpMatrix2);
 
-        /* Tmp_mat2 = $2 */
-        /* (3) K = 3:(Sigma_expect * $2) */
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, Sigma_expect, Tmp_mat2, 0.0, K_mat);
+        /* TmpMatrix2 = $2 */
+        /* (3) K = 3:(SigmaExpectMatrix * $2) */
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, SigmaExpectMatrix, TmpMatrix2, 0.0, KMatrix);
 
         /* state_next = state_next + K * (mu1 - mu0) */
         /* (1) state_next = state_next + K * 1:(mu1 - mu0) */
-        gsl_vector_sub(mu_actual, mu_expect);
+        gsl_vector_sub(MuActual, MuExpected);
         /* mu1 = $1 */
         /* (2) state_next = 2:(K * 1:(mu1 - mu0) + state_next) */
-        gsl_blas_dgemv(CblasNoTrans, 1.0, K_mat, mu_actual, 1.0, x_hat_next);
+        gsl_blas_dgemv(CblasNoTrans, 1.0, KMatrix, MuActual, 1.0, XHatNext);
 
         /* P = K * H * P - P */
         /* (1) P = K * 1:(H * P) - P */
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, H_mat, P_mat, 0.0, Tmp_mat);
-        /* Tmp_mat = $1 */
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, HMatrix, PMatrix, 0.0, TmpMatrix);
+        /* TmpMatrix = $1 */
         /* (2) P = 2:(K * 1:(H * P) - P) */
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, -1.0, K_mat, Tmp_mat, 1.0, P_mat);
+        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, -1.0, KMatrix, TmpMatrix, 1.0, PMatrix);
     }
 
     /* state <- state_next */
-    gsl_vector_memcpy(x_hat, x_hat_next);
+    gsl_vector_memcpy(XHat, XHatNext);
 
-    g_GPS_KALMAN_AppData.OutData.filterLat = gsl_vector_get(x_hat_next, 0);
-    g_GPS_KALMAN_AppData.OutData.filterLon = gsl_vector_get(x_hat_next, 1);
-    g_GPS_KALMAN_AppData.OutData.filterVel = gsl_vector_get(x_hat_next, 2);
+    g_GPS_KALMAN_AppData.OutData.filterLat = gsl_vector_get(XHatNext, 0);
+    g_GPS_KALMAN_AppData.OutData.filterLon = gsl_vector_get(XHatNext, 1);
+    g_GPS_KALMAN_AppData.OutData.filterVel = gsl_vector_get(XHatNext, 2);
 
     return status;
 }
@@ -1159,9 +1113,9 @@ void GPS_KALMAN_SendOutData()
         g_GPS_KALMAN_AppData.OutData.filterLat,
         g_GPS_KALMAN_AppData.OutData.filterLon,
         g_GPS_KALMAN_AppData.OutData.filterVel,
-        gsl_matrix_get(P_mat, 0, 0),
-        gsl_matrix_get(P_mat, 1, 1),
-        gsl_matrix_get(P_mat, 2, 2));
+        gsl_matrix_get(PMatrix, 0, 0),
+        gsl_matrix_get(PMatrix, 1, 1),
+        gsl_matrix_get(PMatrix, 2, 2));
 
 
 

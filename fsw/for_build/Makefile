@@ -19,7 +19,7 @@ ENTRY_PT = GPS_KALMAN_AppMain
 #
 # Object files required to build subsystem.
 #
-OBJS = gps_kalman_app.o gps_kalman_utils.o 
+OBJS = gps_kalman_app.o gps_kalman_utils.o gps_kalman_data.o 
 
 #
 # Source files required to build subsystem; used to generate dependencies.
