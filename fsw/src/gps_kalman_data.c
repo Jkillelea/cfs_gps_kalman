@@ -49,7 +49,11 @@ static double TmpMatrixData[GPS_KALMAN_FILTER_LEN * GPS_KALMAN_FILTER_LEN] = {0.
 /* Temporary matrix */
 static double TmpMatrix2Data[GPS_KALMAN_FILTER_LEN * GPS_KALMAN_FILTER_LEN] = {0.0};
 /* Permutation matrix */
-static gsl_permutation GSLPermutationData;
+static size_t PermutationBackingData[GPS_KALMAN_FILTER_LEN * GPS_KALMAN_FILTER_LEN] = {0.0};
+gsl_permutation GSLPermutationData = {
+    .size = GPS_KALMAN_FILTER_LEN,
+    .data = PermutationBackingData
+};
 
 
 /* Use views to translate between arrays and vector/matrix objects */
