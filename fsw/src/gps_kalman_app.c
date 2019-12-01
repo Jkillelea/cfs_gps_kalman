@@ -1255,7 +1255,7 @@ void GPS_KALMAN_AppMain()
 
     /* Application main loop */
     while (CFE_ES_RunLoop(&g_GPS_KALMAN_AppData.uiRunStatus) == TRUE) {
-        GPS_KALMAN_RcvMsg(CFE_SB_PEND_FOREVER);
+        GPS_KALMAN_RcvMsg(1000);
     }
 
     /* Stop Performance Log entry */
