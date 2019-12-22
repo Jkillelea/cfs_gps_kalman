@@ -581,7 +581,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
                     "GPS_KALMAN - Recvd invalid SCH msgId (0x%08X)", MsgId);
         }
     }
-    else if (iStatus == CFE_SB_NO_MESSAGE)
+    else if (iStatus == CFE_SB_NO_MESSAGE || iStatus == CFE_SB_TIME_OUT)
     {
         /* If there's no incoming message, you can do something here, or nothing */
     }
