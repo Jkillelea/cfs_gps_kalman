@@ -952,7 +952,7 @@ int32 GPS_KALMAN_RunFilter(void) {
 
     /* Next covariance: P = F * P * F' + Q */
     /* DGEMM: C = alpha*opa(A)*opb(B) + beta*C */
-    /* P = 1:(F * P) * F' + Q */
+    /* P = 1:(F * P) * F' + Q <- TODO: check matrix order of operations. Should (P * F') be first?*/
     gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, FMatrix, PMatrix, 0.0, TmpMatrix);
     /* P = 2:(1:(tmp) * F') + Q */
     gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, TmpMatrix, FMatrix, 0.0, PMatrix);
@@ -1067,8 +1067,8 @@ void GPS_KALMAN_ReportHousekeeping()
 {
     /* TODO:  Add code to update housekeeping data, if needed, here.  */
 
-    CFE_SB_TimeStampMsg((CFE_SB_Msg_t*)&g_GPS_KALMAN_AppData.HkTlm);
-    CFE_SB_SendMsg((CFE_SB_Msg_t*)&g_GPS_KALMAN_AppData.HkTlm);
+    CFE_SB_TimeStampMsg((CFE_SB_Msg_t*) &g_GPS_KALMAN_AppData.HkTlm);
+    CFE_SB_SendMsg((CFE_SB_Msg_t*) &g_GPS_KALMAN_AppData.HkTlm);
 }
 
 /*=====================================================================================
