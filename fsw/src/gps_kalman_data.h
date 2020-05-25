@@ -44,7 +44,7 @@ extern gsl_matrix *TmpMatrix;           /* Temporary matrix */
 extern gsl_permutation *GSLPermutation; /* used for inverting matrices */
 
 /* Initialize all the pointer above from static memory (no deallocation needed) */
-void GPS_KALMAN_Init_Matrix_Data();
+void GPS_KALMAN_Init_Matrix_Data(void);
 
 #endif /* end of include guard: GPS_KALMAN_DATA_H_ */
 

@@ -436,7 +436,7 @@ int32 GPS_KALMAN_InitApp()
     }
 
     /* Install the cleanup callback */
-    OS_TaskInstallDeleteHandler((void*) &GPS_KALMAN_CleanupCallback);
+    OS_TaskInstallDeleteHandler(GPS_KALMAN_CleanupCallback);
 
 GPS_KALMAN_InitApp_Exit_Tag:
     if (iStatus == CFE_SUCCESS)
