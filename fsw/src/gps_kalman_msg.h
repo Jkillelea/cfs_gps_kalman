@@ -27,7 +27,8 @@
 /*
 ** Include Files
 */
-
+#include "cfe.h"
+#include "common_types.h"
 
 
 /*
@@ -43,11 +44,11 @@
 /*
 ** Local Structure Declarations
 */
-typedef struct
+typedef struct OS_ALIGN(4)
 {
-    uint8              TlmHeader[CFE_SB_TLM_HDR_SIZE];
-    uint8              usCmdCnt;
-    uint8              usCmdErrCnt;
+    uint8  TlmHeader[CFE_SB_TLM_HDR_SIZE];
+    uint8  usCmdCnt;
+    uint8  usCmdErrCnt;
 
     /* TODO:  Add declarations for additional housekeeping data here */
 
@@ -69,4 +70,4 @@ typedef struct
 /*=======================================================================================
 ** End of file gps_kalman_msg.h
 **=====================================================================================*/
-    
+
