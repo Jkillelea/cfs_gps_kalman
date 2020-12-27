@@ -50,7 +50,7 @@ typedef struct
     /* TODO:  Add input data to this application here, such as raw data read from I/O
     **        devices or data subscribed from other apps' output data.
     */
-    boolean gpsFixOk; /* is the data any good? */
+    bool    gpsFixOk; /* is the data any good? */
     double  gpsLat;   /* GPS Lattidue */
     double  gpsLon;   /* GPS Longitude */
     double  gpsVel;   /* GPS Velocity */

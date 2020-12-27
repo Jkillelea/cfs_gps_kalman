@@ -108,14 +108,14 @@ int32  GPS_KALMAN_RcvMsg(int32 iBlocking);
 
 void  GPS_KALMAN_ProcessNewData(void);
 void  GPS_KALMAN_ProcessNewCmds(void);
-void  GPS_KALMAN_ProcessNewAppCmds(CFE_SB_Msg_t*);
+void  GPS_KALMAN_ProcessNewAppCmds(CFE_MSG_Message_t*);
 
 int32 GPS_KALMAN_RunFilter(void);
 
 void  GPS_KALMAN_ReportHousekeeping(void);
 void  GPS_KALMAN_SendOutData(void);
 
-boolean  GPS_KALMAN_VerifyCmdLength(CFE_SB_Msg_t*, uint16);
+bool GPS_KALMAN_VerifyCmdLength(CFE_MSG_Message_t*, uint16);
 
 void  GPS_KALMAN_AppMain(void);
 
