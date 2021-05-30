@@ -38,13 +38,13 @@
 /*
 ** GPS_KALMAN command codes
 */
-#define GPS_KALMAN_NOOP_CC                 0
-#define GPS_KALMAN_RESET_CC                1
+#define GPS_KALMAN_NOOP_CC  0
+#define GPS_KALMAN_RESET_CC 1
 
 /*
 ** Local Structure Declarations
 */
-typedef struct OS_ALIGN(4)
+typedef struct
 {
     uint8  TlmHeader[CFE_SB_TLM_HDR_SIZE];
     uint8  usCmdCnt;
