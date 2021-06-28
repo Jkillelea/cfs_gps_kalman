@@ -38,6 +38,7 @@
 
 #include "cfe.h"
 
+#include "cfe_msg.h"
 #include "gps_kalman_platform_cfg.h"
 #include "gps_kalman_mission_cfg.h"
 #include "gps_kalman_app.h"
@@ -338,17 +339,16 @@ int32 GPS_KALMAN_InitData()
     /* Init output data */
     memset((void*) &g_GPS_KALMAN_AppData.OutData, 0x00,
             sizeof(g_GPS_KALMAN_AppData.OutData));
-    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.OutData,
+    CFE_MSG_Init((CFE_MSG_Message_t *) &g_GPS_KALMAN_AppData.OutData,
             GPS_KALMAN_OUT_DATA_MID,
-            sizeof(g_GPS_KALMAN_AppData.OutData),
-            true);
+            sizeof(g_GPS_KALMAN_AppData.OutData));
 
     /* Init housekeeping packet */
     memset((void*)&g_GPS_KALMAN_AppData.HkTlm, 0x00,
             sizeof(g_GPS_KALMAN_AppData.HkTlm));
-    CFE_SB_InitMsg(&g_GPS_KALMAN_AppData.HkTlm,
+    CFE_MSG_Init((CFE_MSG_Message_t *) &g_GPS_KALMAN_AppData.HkTlm,
             GPS_KALMAN_HK_TLM_MID,
-            sizeof(g_GPS_KALMAN_AppData.HkTlm), true);
+            sizeof(g_GPS_KALMAN_AppData.HkTlm));
 
     /* initalize all the kalman filter elements */
     GPS_KALMAN_Init_Matrix_Data();
@@ -379,7 +379,6 @@ int32 GPS_KALMAN_InitData()
 **    int32 iStatus - Status of initialization
 **
 ** Routines Called:
-**    CFE_ES_RegisterApp
 **    CFE_ES_WriteToSysLog
 **    CFE_EVS_SendEvent
 **    OS_TaskInstallDeleteHandler
@@ -419,13 +418,6 @@ int32 GPS_KALMAN_InitApp()
     int32  iStatus = CFE_SUCCESS;
 
     g_GPS_KALMAN_AppData.uiRunStatus = CFE_ES_RunStatus_APP_RUN;
-
-    iStatus = CFE_ES_RegisterApp();
-    if (iStatus != CFE_SUCCESS)
-    {
-        CFE_ES_WriteToSysLog("GPS_KALMAN - Failed to register the app (0x%08X)\n", iStatus);
-        goto GPS_KALMAN_InitApp_Exit_Tag;
-    }
 
     if ((GPS_KALMAN_InitEvent() != CFE_SUCCESS) ||
         (GPS_KALMAN_InitPipe() != CFE_SUCCESS) ||
@@ -510,8 +502,8 @@ void GPS_KALMAN_CleanupCallback()
 **    int32 iStatus - Status of initialization
 **
 ** Routines Called:
-**    CFE_SB_RcvMsg
-**    CFE_SB_GetMsgId
+**    CFE_SB_ReceiveBuffer
+**    CFE_MSG_GetMsgId
 **    CFE_EVS_SendEvent
 **    CFE_ES_PerfLogEntry
 **    CFE_ES_PerfLogExit
@@ -545,9 +537,9 @@ void GPS_KALMAN_CleanupCallback()
 **=====================================================================================*/
 int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
 {
-    int32 iStatus = CFE_SUCCESS;
-    CFE_SB_Buffer_t *MsgPtr = NULL;
-    CFE_SB_MsgId_t MsgId;
+    int32            iStatus = CFE_SUCCESS;
+    CFE_SB_Buffer_t *MsgPtr  = NULL;
+    CFE_SB_MsgId_t   MsgId   = 0;
 
     /* Stop Performance Log entry */
     CFE_ES_PerfLogExit(GPS_KALMAN_MAIN_TASK_PERF_ID);
@@ -560,7 +552,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
 
     if (iStatus == CFE_SUCCESS)
     {
-        MsgId = CFE_SB_GetMsgId(&MsgPtr->Msg);
+        CFE_MSG_GetMsgId(&MsgPtr->Msg, &MsgId);
         switch (MsgId)
         {
         case GPS_KALMAN_WAKEUP_MID:
@@ -599,46 +591,63 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
     return (iStatus);
 }
 
+bool GPS_KALMAN_IsFixOk(GpsInfoMsg_t *infoMsg)
+{
+    bool fixOk = false;
+
+    if (infoMsg != NULL)
+    {
+        /* fix = Operating mode, used for navigation (1 = Fix not available; 2 = 2D; 3 = 3D) */
+        fixOk = (infoMsg->gpsInfo.fix >= GPS_FIX_2D)
+            /* sig = GPS quality indicator (0 = Invalid; 1 = Fix; 2 = Differential, 3 = Sensitive) */
+            && (infoMsg->gpsInfo.sig >= GPS_SIG_FIX)
+            /* 99.99 is used for undetermined/null */
+            && (g_GPS_KALMAN_AppData.InData.gpsDOP < 99.99);
+    }
+
+    return fixOk;
+}
+
 /*=====================================================================================
-** Name: GPS_KALMAN_ProcessNewData
-**
-** Purpose: To process incoming data subscribed by GPS_KALMAN application
-**
-** Arguments:
-**    None
-**
-** Returns:
-**    None
-**
-** Routines Called:
-**    CFE_SB_RcvMsg
-**    CFE_SB_GetMsgId
-**    CFE_EVS_SendEvent
-**
-** Called By:
-**    GPS_KALMAN_RcvMsg
-**
-** Global Inputs/Reads:
-**    None
-**
-** Global Outputs/Writes:
-**    None
-**
-** Limitations, Assumptions, External Events, and Notes:
-**    1. List assumptions that are made that apply to this function.
-**    2. List the external source(s) and event(s) that can cause this function to execute.
-**    3. List known limitations that apply to this function.
-**    4. If there are no assumptions, external events, or notes then enter NONE.
-**       Do not omit the section.
-**
-** Algorithm:
-**    Psuedo-code or description of basic algorithm
-**
-** Author(s):  Jacob Killelea
-**
-** History:  Date Written  2019-06-28
-**           Unit Tested   yyyy-mm-dd
-**=====================================================================================*/
+ ** Name: GPS_KALMAN_ProcessNewData
+ **
+ ** Purpose: To process incoming data subscribed by GPS_KALMAN application
+ **
+ ** Arguments:
+ **    None
+ **
+ ** Returns:
+ **    None
+ **
+ ** Routines Called:
+ **    CFE_SB_ReceiveBuffer
+ **    CFE_MSG_GetMsgId
+ **    CFE_EVS_SendEvent
+ **
+ ** Called By:
+ **    GPS_KALMAN_RcvMsg
+ **
+ ** Global Inputs/Reads:
+ **    None
+ **
+ ** Global Outputs/Writes:
+ **    None
+ **
+ ** Limitations, Assumptions, External Events, and Notes:
+ **    1. List assumptions that are made that apply to this function.
+ **    2. List the external source(s) and event(s) that can cause this function to execute.
+ **    3. List known limitations that apply to this function.
+ **    4. If there are no assumptions, external events, or notes then enter NONE.
+ **       Do not omit the section.
+ **
+ ** Algorithm:
+ **    Psuedo-code or description of basic algorithm
+ **
+ ** Author(s):  Jacob Killelea
+ **
+ ** History:  Date Written  2019-06-28
+ **           Unit Tested   yyyy-mm-dd
+ **=====================================================================================*/
 void GPS_KALMAN_ProcessNewData()
 {
     int iStatus = CFE_SUCCESS;
@@ -652,7 +661,7 @@ void GPS_KALMAN_ProcessNewData()
         iStatus = CFE_SB_ReceiveBuffer(&TlmMsgPtr, g_GPS_KALMAN_AppData.TlmPipeId, CFE_SB_POLL);
         if (iStatus == CFE_SUCCESS)
         {
-            TlmMsgId = CFE_SB_GetMsgId(&TlmMsgPtr->Msg);
+            CFE_MSG_GetMsgId(&TlmMsgPtr->Msg, &TlmMsgId);
             switch (TlmMsgId)
             {
             case GPS_READER_GPS_INFO_MSG:
@@ -670,13 +679,7 @@ void GPS_KALMAN_ProcessNewData()
                 g_GPS_KALMAN_AppData.InData.gpsDOP = infoMsg->gpsInfo.HDOP; /* Horizontal Dilution Of Precision */
 
                 /* Determine whether GPS fix is good based on reported signals and PDOP */
-                g_GPS_KALMAN_AppData.InData.gpsFixOk =
-                /* fix = Operating mode, used for navigation (1 = Fix not available; 2 = 2D; 3 = 3D) */
-                    (infoMsg->gpsInfo.fix >= 2)
-                /* sig = GPS quality indicator (0 = Invalid; 1 = Fix; 2 = Differential, 3 = Sensitive) */
-                && (infoMsg->gpsInfo.sig >= 1)
-                /* 99.99 is used for undetermined/null */
-                && (g_GPS_KALMAN_AppData.InData.gpsDOP < 99.99);
+                g_GPS_KALMAN_AppData.InData.gpsFixOk = GPS_KALMAN_IsFixOk(infoMsg);
 
 
                 /* TODO: replace with actual filtering */
@@ -736,8 +739,8 @@ void GPS_KALMAN_ProcessNewData()
 **    None
 **
 ** Routines Called:
-**    CFE_SB_RcvMsg
-**    CFE_SB_GetMsgId
+**    CFE_SB_ReceiveBuffer
+**    CFE_MSG_GetMsgId
 **    CFE_EVS_SendEvent
 **    GPS_KALMAN_ProcessNewAppCmds
 **    GPS_KALMAN_ReportHousekeeping
@@ -778,7 +781,7 @@ void GPS_KALMAN_ProcessNewCmds()
         iStatus = CFE_SB_ReceiveBuffer(&CmdMsgPtr, g_GPS_KALMAN_AppData.CmdPipeId, CFE_SB_POLL);
         if(iStatus == CFE_SUCCESS)
         {
-            CmdMsgId = CFE_SB_GetMsgId(&CmdMsgPtr->Msg);
+            CFE_MSG_GetMsgId(&CmdMsgPtr->Msg, &CmdMsgId);
             switch (CmdMsgId)
             {
             case GPS_KALMAN_CMD_MID:
@@ -830,7 +833,7 @@ void GPS_KALMAN_ProcessNewCmds()
 **    None
 **
 ** Routines Called:
-**    CFE_SB_GetCmdCode
+**    CFE_MSG_GetFcnCode
 **    CFE_EVS_SendEvent
 **
 ** Called By:
@@ -860,11 +863,12 @@ void GPS_KALMAN_ProcessNewCmds()
 **=====================================================================================*/
 void GPS_KALMAN_ProcessNewAppCmds(CFE_MSG_Message_t* MsgPtr)
 {
-    uint32 cmdCode = 0;
+    CFE_MSG_FcnCode_t cmdCode = 0;
 
     if (MsgPtr != NULL)
     {
-        cmdCode = CFE_SB_GetCmdCode(MsgPtr);
+        CFE_MSG_GetFcnCode(MsgPtr, &cmdCode);
+
         switch (cmdCode)
         {
         case GPS_KALMAN_NOOP_CC:
@@ -1066,7 +1070,7 @@ void GPS_KALMAN_ReportHousekeeping()
     /* TODO:  Add code to update housekeeping data, if needed, here.  */
 
     CFE_SB_TimeStampMsg((CFE_MSG_Message_t*) &g_GPS_KALMAN_AppData.HkTlm);
-    CFE_SB_SendMsg((CFE_MSG_Message_t*) &g_GPS_KALMAN_AppData.HkTlm);
+    CFE_SB_TransmitMsg((CFE_MSG_Message_t*) &g_GPS_KALMAN_AppData.HkTlm, true);
 }
 
 /*=====================================================================================
@@ -1121,7 +1125,7 @@ void GPS_KALMAN_SendOutData()
         gsl_matrix_get(PMatrix, 2, 2));
 
     CFE_SB_TimeStampMsg((CFE_MSG_Message_t*) &g_GPS_KALMAN_AppData.OutData);
-    CFE_SB_SendMsg((CFE_MSG_Message_t*) &g_GPS_KALMAN_AppData.OutData);
+    CFE_SB_TransmitMsg((CFE_MSG_Message_t*) &g_GPS_KALMAN_AppData.OutData, true);
 }
 
 /*=====================================================================================
@@ -1165,27 +1169,33 @@ void GPS_KALMAN_SendOutData()
 **=====================================================================================*/
 bool GPS_KALMAN_VerifyCmdLength(CFE_MSG_Message_t* MsgPtr, uint16 usExpectedLen)
 {
-    bool bResult = false;
-    uint16  usMsgLen = 0;
+    bool verified = false;
+    CFE_MSG_Size_t usMsgLen = 0;
 
     if (MsgPtr != NULL)
     {
-        usMsgLen = CFE_SB_GetTotalMsgLength(MsgPtr);
+        CFE_MSG_GetSize(MsgPtr, &usMsgLen);
 
         if (usExpectedLen != usMsgLen)
         {
-            CFE_SB_MsgId_t MsgId = CFE_SB_GetMsgId(MsgPtr);
-            uint16 usCmdCode = CFE_SB_GetCmdCode(MsgPtr);
+            CFE_SB_MsgId_t MsgId = 0;
+            CFE_MSG_FcnCode_t usCmdCode = 0;
+            CFE_MSG_GetFcnCode(MsgPtr, &usCmdCode);
+            CFE_MSG_GetMsgId(MsgPtr, &MsgId);
 
             CFE_EVS_SendEvent(GPS_KALMAN_MSGLEN_ERR_EID, CFE_EVS_EventType_ERROR,
                               "GPS_KALMAN - Rcvd invalid msgLen: msgId=0x%08X, cmdCode=%d, "
-                              "msgLen=%d, expectedLen=%d",
+                              "msgLen=%zu, expectedLen=%d",
                               MsgId, usCmdCode, usMsgLen, usExpectedLen);
             g_GPS_KALMAN_AppData.HkTlm.usCmdErrCnt++;
         }
+        else
+        {
+        verified = true;
+        }
     }
 
-    return (bResult);
+    return verified;
 }
 
 /*=====================================================================================
@@ -1200,7 +1210,6 @@ bool GPS_KALMAN_VerifyCmdLength(CFE_MSG_Message_t* MsgPtr, uint16 usExpectedLen)
 **    None
 **
 ** Routines Called:
-**    CFE_ES_RegisterApp
 **    CFE_ES_RunLoop
 **    CFE_ES_PerfLogEntry
 **    CFE_ES_PerfLogExit
@@ -1235,9 +1244,6 @@ bool GPS_KALMAN_VerifyCmdLength(CFE_MSG_Message_t* MsgPtr, uint16 usExpectedLen)
 **=====================================================================================*/
 void GPS_KALMAN_AppMain()
 {
-    /* Register the application with Executive Services */
-    CFE_ES_RegisterApp();
-
     /* Start Performance Log entry */
     CFE_ES_PerfLogEntry(GPS_KALMAN_MAIN_TASK_PERF_ID);
 

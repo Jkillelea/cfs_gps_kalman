@@ -44,6 +44,23 @@
 /*
 ** Local Structure Declarations
 */
+
+typedef enum
+{
+    GPS_FIX_INVALID   = 0,
+    GPS_FIX_NOT_AVAIL = 1,
+    GPS_FIX_2D        = 2,
+    GPS_FIX_3D        = 3,
+} GPSFixQuality;
+
+typedef enum
+{
+    GPS_SIG_INVALID      = 0,
+    GPS_SIG_FIX          = 1,
+    GPS_SIG_DIFFERENTIAL = 2,
+    GPS_SIG_SENSITIVE    = 3,
+} GPSSignalQuality;
+
 typedef struct
 {
     /* CFE Event table */
