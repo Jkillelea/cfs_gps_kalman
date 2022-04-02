@@ -46,7 +46,7 @@
 */
 typedef struct
 {
-    uint8  TlmHeader[CFE_SB_TLM_HDR_SIZE];
+    CFE_MSG_TelemetryHeader_t TlmHeader;
     uint8  usCmdCnt;
     uint8  usCmdErrCnt;
 
@@ -57,7 +57,7 @@ typedef struct
 /* Filter output data */
 typedef struct
 {
-    uint8   ucTlmHeader[CFE_SB_TLM_HDR_SIZE];
+    CFE_MSG_TelemetryHeader_t TlmHeader;
     uint32  uiCounter;
     double  filterLat; /* Kalman Filter Lattidue */
     double  filterLon; /* Kalman Filter Longitude */

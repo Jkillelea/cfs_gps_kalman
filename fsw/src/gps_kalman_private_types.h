@@ -39,7 +39,7 @@
 
 typedef struct
 {
-    uint8  ucCmdHeader[CFE_SB_CMD_HDR_SIZE];
+    CFE_MSG_CommandHeader_t ucCmdHeader;
 } GPS_KALMAN_NoArgCmd_t;
 
 
