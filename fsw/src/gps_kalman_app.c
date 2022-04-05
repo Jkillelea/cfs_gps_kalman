@@ -37,8 +37,9 @@
 #include <math.h>
 
 #include "cfe.h"
-
 #include "cfe_msg.h"
+
+#include "cfe_sb.h"
 #include "gps_kalman_platform_cfg.h"
 #include "gps_kalman_mission_cfg.h"
 #include "gps_kalman_app.h"
@@ -202,7 +203,7 @@ int32 GPS_KALMAN_InitPipe()
                                  g_GPS_KALMAN_AppData.cSchPipeName);
     if (iStatus == CFE_SUCCESS)
     {
-        iStatus = CFE_SB_SubscribeEx(GPS_KALMAN_WAKEUP_MID, g_GPS_KALMAN_AppData.SchPipeId, CFE_SB_Default_Qos, 1);
+        iStatus = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_KALMAN_WAKEUP_MID), g_GPS_KALMAN_AppData.SchPipeId);
 
         if (iStatus != CFE_SUCCESS)
         {
@@ -229,7 +230,7 @@ int32 GPS_KALMAN_InitPipe()
     if (iStatus == CFE_SUCCESS)
     {
         /* Subscribe to command messages */
-        iStatus = CFE_SB_Subscribe(GPS_KALMAN_CMD_MID, g_GPS_KALMAN_AppData.CmdPipeId);
+        iStatus = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_KALMAN_CMD_MID), g_GPS_KALMAN_AppData.CmdPipeId);
 
         if (iStatus != CFE_SUCCESS)
         {
@@ -237,7 +238,7 @@ int32 GPS_KALMAN_InitPipe()
             goto GPS_KALMAN_InitPipe_Exit_Tag;
         }
 
-        iStatus  = CFE_SB_Subscribe(GPS_KALMAN_SEND_HK_MID,   g_GPS_KALMAN_AppData.CmdPipeId);
+        iStatus  = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_KALMAN_SEND_HK_MID),   g_GPS_KALMAN_AppData.CmdPipeId);
 
         if (iStatus != CFE_SUCCESS)
         {
@@ -270,12 +271,12 @@ int32 GPS_KALMAN_InitPipe()
         */
 
         /* GPS Reader messages */
-        CFE_SB_Subscribe(GPS_READER_GPS_INFO_MSG,  g_GPS_KALMAN_AppData.TlmPipeId);
-        /* CFE_SB_Subscribe(GPS_READER_GPS_GPGGA_MSG, g_GPS_KALMAN_AppData.TlmPipeId); */
-        /* CFE_SB_Subscribe(GPS_READER_GPS_GPGSA_MSG, g_GPS_KALMAN_AppData.TlmPipeId); */
-        /* CFE_SB_Subscribe(GPS_READER_GPS_GPGSV_MSG, g_GPS_KALMAN_AppData.TlmPipeId); */
-        /* CFE_SB_Subscribe(GPS_READER_GPS_GPRMC_MSG, g_GPS_KALMAN_AppData.TlmPipeId); */
-        /* CFE_SB_Subscribe(GPS_READER_GPS_GPVTG_MSG, g_GPS_KALMAN_AppData.TlmPipeId); */
+        CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_READER_GPS_INFO_MSG), g_GPS_KALMAN_AppData.TlmPipeId);
+        /* CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_READER_GPS_GPGGA_MSG), g_GPS_KALMAN_AppData.TlmPipeId); */
+        /* CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_READER_GPS_GPGSA_MSG), g_GPS_KALMAN_AppData.TlmPipeId); */
+        /* CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_READER_GPS_GPGSV_MSG), g_GPS_KALMAN_AppData.TlmPipeId); */
+        /* CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_READER_GPS_GPRMC_MSG), g_GPS_KALMAN_AppData.TlmPipeId); */
+        /* CFE_SB_Subscribe(CFE_SB_ValueToMsgId(GPS_READER_GPS_GPVTG_MSG), g_GPS_KALMAN_AppData.TlmPipeId); */
 
     }
     else
@@ -340,14 +341,14 @@ int32 GPS_KALMAN_InitData()
     memset((void*) &g_GPS_KALMAN_AppData.OutData, 0x00,
             sizeof(g_GPS_KALMAN_AppData.OutData));
     CFE_MSG_Init((CFE_MSG_Message_t *) &g_GPS_KALMAN_AppData.OutData,
-            GPS_KALMAN_OUT_DATA_MID,
+            CFE_SB_ValueToMsgId(GPS_KALMAN_OUT_DATA_MID),
             sizeof(g_GPS_KALMAN_AppData.OutData));
 
     /* Init housekeeping packet */
     memset((void*)&g_GPS_KALMAN_AppData.HkTlm, 0x00,
             sizeof(g_GPS_KALMAN_AppData.HkTlm));
     CFE_MSG_Init((CFE_MSG_Message_t *) &g_GPS_KALMAN_AppData.HkTlm,
-            GPS_KALMAN_HK_TLM_MID,
+            CFE_SB_ValueToMsgId(GPS_KALMAN_HK_TLM_MID),
             sizeof(g_GPS_KALMAN_AppData.HkTlm));
 
     /* initalize all the kalman filter elements */
@@ -539,7 +540,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
 {
     int32            iStatus = CFE_SUCCESS;
     CFE_SB_Buffer_t *MsgPtr  = NULL;
-    CFE_SB_MsgId_t   MsgId   = 0;
+    CFE_SB_MsgId_t   MsgId   = CFE_SB_ValueToMsgId(0);
 
     /* Stop Performance Log entry */
     CFE_ES_PerfLogExit(GPS_KALMAN_MAIN_TASK_PERF_ID);
@@ -553,7 +554,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
     if (iStatus == CFE_SUCCESS)
     {
         CFE_MSG_GetMsgId(&MsgPtr->Msg, &MsgId);
-        switch (MsgId)
+        switch (CFE_SB_MsgIdToValue(MsgId))
         {
         case GPS_KALMAN_WAKEUP_MID:
             GPS_KALMAN_ProcessNewCmds();
@@ -570,7 +571,7 @@ int32 GPS_KALMAN_RcvMsg(int32 iBlocking)
         default:
             CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID,
                     CFE_EVS_EventType_ERROR,
-                    "GPS_KALMAN - Recvd invalid SCH msgId (0x%08X)", MsgId);
+                    "GPS_KALMAN - Recvd invalid SCH msgId (0x%08X)", CFE_SB_MsgIdToValue(MsgId));
         }
     }
     else if (iStatus == CFE_SB_NO_MESSAGE || iStatus == CFE_SB_TIME_OUT)
@@ -662,7 +663,7 @@ void GPS_KALMAN_ProcessNewData()
         if (iStatus == CFE_SUCCESS)
         {
             CFE_MSG_GetMsgId(&TlmMsgPtr->Msg, &TlmMsgId);
-            switch (TlmMsgId)
+            switch (CFE_SB_MsgIdToValue(TlmMsgId))
             {
             case GPS_READER_GPS_INFO_MSG:
                 /* CFE_EVS_SendEvent(GPS_KALMAN_CMD_INF_EID, CFE_EVS_INFORMATION, "GPS_INFO messgage"); */
@@ -688,7 +689,7 @@ void GPS_KALMAN_ProcessNewData()
 
             default:
                 CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_EventType_ERROR,
-                                  "GPS_KALMAN - Recvd invalid TLM msgId (0x%08X)", TlmMsgId);
+                                  "GPS_KALMAN - Recvd invalid TLM msgId (0x%08X)", CFE_SB_MsgIdToValue(TlmMsgId));
                 break;
             }
         }
@@ -772,26 +773,25 @@ void GPS_KALMAN_ProcessNewData()
 void GPS_KALMAN_ProcessNewCmds()
 {
     int iStatus = CFE_SUCCESS;
-    CFE_SB_Msg_t*   CmdMsgPtr=NULL;
+    CFE_SB_Buffer_t *CmdMsgBuffer;
     CFE_SB_MsgId_t  CmdMsgId;
 
     /* Process command messages till the pipe is empty */
     while (1)
     {
-        iStatus = CFE_SB_ReceiveBuffer(&CmdMsgPtr, g_GPS_KALMAN_AppData.CmdPipeId, CFE_SB_POLL);
+        iStatus = CFE_SB_ReceiveBuffer(&CmdMsgBuffer, g_GPS_KALMAN_AppData.CmdPipeId, CFE_SB_POLL);
         if(iStatus == CFE_SUCCESS)
         {
-            CFE_MSG_GetMsgId(&CmdMsgPtr->Msg, &CmdMsgId);
-            switch (CmdMsgId)
+            CFE_MSG_GetMsgId(&CmdMsgBuffer->Msg, &CmdMsgId);
+            switch (CFE_SB_MsgIdToValue(CmdMsgId))
             {
             case GPS_KALMAN_CMD_MID:
-                GPS_KALMAN_ProcessNewAppCmds(&CmdMsgPtr->Msg);
+                GPS_KALMAN_ProcessNewAppCmds(&CmdMsgBuffer->Msg);
                 break;
 
             case GPS_KALMAN_SEND_HK_MID:
                 GPS_KALMAN_ReportHousekeeping();
                 break;
-
 
             /* TODO:  Add code to process other subscribed commands here
             **
@@ -803,7 +803,7 @@ void GPS_KALMAN_ProcessNewCmds()
 
             default:
                 CFE_EVS_SendEvent(GPS_KALMAN_MSGID_ERR_EID, CFE_EVS_EventType_ERROR,
-                                  "GPS_KALMAN - Recvd invalid CMD msgId (0x%08X)", CmdMsgId);
+                                  "GPS_KALMAN - Recvd invalid CMD msgId (0x%08X)", CFE_SB_MsgIdToValue(CmdMsgId));
                 break;
             }
         }
@@ -1178,7 +1178,7 @@ bool GPS_KALMAN_VerifyCmdLength(CFE_MSG_Message_t* MsgPtr, uint16 usExpectedLen)
 
         if (usExpectedLen != usMsgLen)
         {
-            CFE_SB_MsgId_t MsgId = 0;
+            CFE_SB_MsgId_t MsgId;
             CFE_MSG_FcnCode_t usCmdCode = 0;
             CFE_MSG_GetFcnCode(MsgPtr, &usCmdCode);
             CFE_MSG_GetMsgId(MsgPtr, &MsgId);
@@ -1186,7 +1186,7 @@ bool GPS_KALMAN_VerifyCmdLength(CFE_MSG_Message_t* MsgPtr, uint16 usExpectedLen)
             CFE_EVS_SendEvent(GPS_KALMAN_MSGLEN_ERR_EID, CFE_EVS_EventType_ERROR,
                               "GPS_KALMAN - Rcvd invalid msgLen: msgId=0x%08X, cmdCode=%d, "
                               "msgLen=%zu, expectedLen=%d",
-                              MsgId, usCmdCode, usMsgLen, usExpectedLen);
+                              CFE_SB_MsgIdToValue(MsgId), usCmdCode, usMsgLen, usExpectedLen);
             g_GPS_KALMAN_AppData.HkTlm.usCmdErrCnt++;
         }
         else
